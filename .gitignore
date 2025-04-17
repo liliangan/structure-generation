@@ -1,0 +1,12 @@
+
+
+# 编辑器和IDE文件
+.idea/
+.vscode/
+
+# 依赖目录
+node_modules/
+
+# 打包输出目录
+*.vsix
+

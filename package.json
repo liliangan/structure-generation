@@ -1,0 +1,82 @@
+{
+  "name": "structure-generator",
+  "displayName": "Project Structure Generator (项目结构生成器)",
+  "description": "扫描项目文件，生成包含项目结构的README.md",
+  "version": "1.0.0",
+  "publisher": "user",
+  "icon": "images/icon.png",
+  "author": {
+    "name": "User"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/vscode-project-structure-generator"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "project-structure.generate",
+        "title": "生成项目结构到README.md"
+      },
+      {
+        "command": "project-structure.configure",
+        "title": "配置项目结构生成器"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "explorerResourceIsFolder",
+          "command": "project-structure.generate",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "project-structure.generate",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "项目结构生成器",
+      "properties": {
+        "projectStructure.ignoredPatterns": {
+          "type": "array",
+          "default": [
+            "node_modules",
+            "dist",
+            ".vscode",
+            ".idea"
+          ],
+          "description": "要忽略的文件或目录模式"
+        },
+        "projectStructure.maxDepth": {
+          "type": "number",
+          "default": 5,
+          "description": "扫描的最大目录深度"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@types/vscode": "^1.60.0",
+    "typescript": "^5.8.3"
+  }
+}
