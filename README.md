@@ -2,12 +2,12 @@
 
 *[中文文档](#项目结构生成器)*
 
-A VS Code extension that scans project files and generates a structured directory tree in your README.md file.
+A VS Code extension that scans project files and generates a structured directory tree in a file.
 
 ## Features
 
 - Automatically scans project file structure
-- Generates a formatted directory tree in README.md
+- Generates a formatted directory tree in a file
 - Supports configuration to ignore specific files or directories
 - Allows setting maximum scan depth
 - Default ignores common directories like `node_modules`, `dist`, `.vscode`, and `.idea`
@@ -15,8 +15,8 @@ A VS Code extension that scans project files and generates a structured director
 ## Usage
 
 1. Open the command palette in VS Code (press `Ctrl+Shift+P` or `Cmd+Shift+P`)
-2. Type "Generate Project Structure to README.md" and select the command
-3. The extension will automatically scan your current project and add the structure to your README.md file
+2. Type "Generate Project Structure File" and select the command
+3. The extension will automatically scan your current project and add the structure to the specified file
 
 ## Configuration Options
 
@@ -24,6 +24,7 @@ In VS Code settings, you can customize the following options:
 
 - `projectStructure.ignoredPatterns`: Patterns of files or directories to ignore (array)
 - `projectStructure.maxDepth`: Maximum directory depth to scan (number)
+- `projectStructure.outputFileName`: Output file name (without extension, .md will be added automatically), default is "README"
 
 You can access these configurations by:
 
@@ -53,12 +54,12 @@ project-name
 
 # 项目结构生成器
 
-这是一个VS Code插件，用于扫描项目文件并生成包含项目结构的README.md文件。
+这是一个VS Code插件，用于扫描项目文件并生成包含项目结构的文件。
 
 ## 功能
 
 - 自动扫描项目文件结构
-- 生成格式化的目录树到README.md
+- 生成格式化的目录树到文件
 - 支持配置忽略特定文件或目录
 - 支持设置扫描的最大深度
 - 默认过滤常见目录，如 `node_modules`、`dist`、`.vscode` 和 `.idea`
@@ -66,8 +67,8 @@ project-name
 ## 使用方法
 
 1. 在VS Code中打开命令面板（按下 `Ctrl+Shift+P` 或 `Cmd+Shift+P`）
-2. 输入 "生成项目结构到README.md" 并选择该命令
-3. 插件将自动扫描当前项目并将结构添加到README.md文件中
+2. 输入 "生成项目结构文件" 并选择该命令
+3. 插件将自动扫描当前项目并将结构添加到指定文件中
 
 ## 配置选项
 
@@ -75,6 +76,7 @@ project-name
 
 - `projectStructure.ignoredPatterns`: 要忽略的文件或目录模式（数组）
 - `projectStructure.maxDepth`: 扫描的最大目录深度（数字）
+- `projectStructure.outputFileName`: 输出文件名称（不含扩展名，将自动添加.md），默认为"README"
 
 你可以通过以下方式访问配置：
 

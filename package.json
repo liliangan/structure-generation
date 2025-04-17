@@ -1,7 +1,7 @@
 {
   "name": "project-structure-generator",
   "displayName": "Project Structure Generator (项目结构生成器)",
-  "description": "扫描项目文件，生成包含项目结构的README.md",
+  "description": "扫描项目文件，生成包含项目结构的文件 | Scan project files and generate a file containing the project structure",
   "version": "1.0.1",
   "publisher": "LiLiangAn-structure-generator",
   "icon": "images/icon.png",
@@ -24,11 +24,11 @@
     "commands": [
       {
         "command": "project-structure.generate",
-        "title": "生成项目结构到README.md"
+        "title": "%project-structure.generate%"
       },
       {
         "command": "project-structure.configure",
-        "title": "配置项目结构生成器"
+        "title": "%project-structure.configure%"
       }
     ],
     "menus": {
@@ -47,7 +47,7 @@
       ]
     },
     "configuration": {
-      "title": "项目结构生成器",
+      "title": "%configuration.title%",
       "properties": {
         "projectStructure.ignoredPatterns": {
           "type": "array",
@@ -57,17 +57,17 @@
             ".vscode",
             ".idea"
           ],
-          "description": "要忽略的文件或目录模式"
+          "description": "%configuration.ignoredPatterns.description%"
         },
         "projectStructure.maxDepth": {
           "type": "number",
           "default": 5,
-          "description": "扫描的最大目录深度"
+          "description": "%configuration.maxDepth.description%"
         },
         "projectStructure.outputFileName": {
           "type": "string",
           "default": "README",
-          "description": "生成的文件名称（不含扩展名，将自动添加.md）"
+          "description": "%configuration.outputFileName.description%"
         }
       }
     }

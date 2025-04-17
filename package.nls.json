@@ -1,0 +1,8 @@
+{
+  "project-structure.generate": "生成项目结构文件 | Generate Project Structure File",
+  "project-structure.configure": "配置项目结构生成器 | Configure Project Structure Generator",
+  "configuration.title": "项目结构生成器 | Project Structure Generator",
+  "configuration.ignoredPatterns.description": "要忽略的文件或目录模式 | Patterns of files or directories to ignore",
+  "configuration.maxDepth.description": "扫描的最大目录深度 | Maximum directory depth to scan",
+  "configuration.outputFileName.description": "生成的文件名称（不含扩展名，将自动添加.md） | Output file name (without extension, .md will be added automatically)"
+}
