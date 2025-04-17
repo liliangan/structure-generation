@@ -3,14 +3,14 @@
   "displayName": "Project Structure Generator (项目结构生成器)",
   "description": "扫描项目文件，生成包含项目结构的README.md",
   "version": "1.0.0",
-  "publisher": "user",
+  "publisher": "liliangan",
   "icon": "images/icon.png",
   "author": {
-    "name": "User"
+    "name": "liliangan"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/vscode-project-structure-generator"
+    "url": "https://github.com/liliangan/structure-generation"
   },
   "engines": {
     "vscode": "^1.60.0"
