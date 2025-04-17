@@ -1,9 +1,9 @@
 {
-  "name": "structure-generator",
+  "name": "project-structure-generator",
   "displayName": "Project Structure Generator (项目结构生成器)",
   "description": "扫描项目文件，生成包含项目结构的README.md",
   "version": "1.0.0",
-  "publisher": "liliangan",
+  "publisher": "LiLiangAn-structure-generator",
   "icon": "images/icon.png",
   "author": {
     "name": "liliangan"
