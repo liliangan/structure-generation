@@ -8,28 +8,36 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 注册生成项目结构命令
     let generateCommand = vscode.commands.registerCommand('project-structure.generate', async (resource: vscode.Uri | undefined) => {
-        // 确定要扫描的目录路径
-        let targetPath: string;
+        // 确定要扫描的目录路径和生成README的目录路径
+        let scanPath: string;
+        let rootPath: string;
         
-        // 如果是从右键菜单调用并且有资源
+        // 获取工作区根目录（用于生成README.md）
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            vscode.window.showErrorMessage('请先打开一个项目文件夹');
+            return;
+        }
+        rootPath = workspaceFolders[0].uri.fsPath;
+        
+        // 如果是从右键菜单调用并且有资源，使用该资源作为扫描路径
         if (resource && resource.fsPath) {
             const stats = fs.statSync(resource.fsPath);
             // 如果右键点击的是文件，则使用其所在目录
-            targetPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
+            scanPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
         } else {
-            // 如果是从命令面板调用，则使用当前工作区
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders || workspaceFolders.length === 0) {
-                vscode.window.showErrorMessage('请先打开一个项目文件夹');
-                return;
-            }
-            targetPath = workspaceFolders[0].uri.fsPath;
+            // 如果是从命令面板调用，则使用当前工作区作为扫描路径
+            scanPath = rootPath;
         }
         
         try {
-            const structure = await generateProjectStructure(targetPath);
-            await writeToReadme(targetPath, structure);
-            vscode.window.showInformationMessage(`项目结构已成功生成到 ${path.join(targetPath, 'README.md')}`);
+            // 从配置中获取输出文件名
+            const config = vscode.workspace.getConfiguration('projectStructure');
+            const outputFileName = config.get('outputFileName') || 'README';
+            
+            const structure = await generateProjectStructure(scanPath);
+            await writeToReadme(rootPath, structure);
+            vscode.window.showInformationMessage(`项目结构已成功生成到 ${path.join(rootPath, `${outputFileName}.md`)}`);
         } catch (error) {
             vscode.window.showErrorMessage(`生成项目结构失败: ${error}`);
         }
@@ -142,18 +150,21 @@ function shouldIgnore(fileName: string, filePath: string, ignoredPatterns: strin
     });
 }
 
-// 写入到README.md文件
+// 写入到指定文件
 async function writeToReadme(targetPath: string, content: string): Promise<void> {
-    const readmePath = path.join(targetPath, 'README.md');
+    // 从配置中获取输出文件名
+    const config = vscode.workspace.getConfiguration('projectStructure');
+    const outputFileName = config.get('outputFileName') || 'README';
+    const outputFilePath = path.join(targetPath, `${outputFileName}.md`);
     let existingContent = '';
 
-    // 检查README.md是否已存在
+    // 检查输出文件是否已存在
     try {
-        if (fs.existsSync(readmePath)) {
-            existingContent = fs.readFileSync(readmePath, 'utf8');
+        if (fs.existsSync(outputFilePath)) {
+            existingContent = fs.readFileSync(outputFilePath, 'utf8');
         }
     } catch (error) {
-        console.log('README.md不存在，将创建新文件');
+        console.log(`${outputFileName}.md不存在，将创建新文件`);
     }
 
     // 如果已存在项目结构部分，则替换它
@@ -168,10 +179,10 @@ async function writeToReadme(targetPath: string, content: string): Promise<void>
     }
 
     // 写入文件
-    fs.writeFileSync(readmePath, existingContent);
+    fs.writeFileSync(outputFilePath, existingContent);
     
-    // 在VS Code中打开生成的README.md文件
-    vscode.workspace.openTextDocument(readmePath).then(doc => {
+    // 在VS Code中打开生成的文件
+    vscode.workspace.openTextDocument(outputFilePath).then(doc => {
         vscode.window.showTextDocument(doc);
     });
 }
