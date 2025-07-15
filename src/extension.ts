@@ -2,6 +2,14 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// 定义结构项接口
+interface StructureItem {
+    name: string;
+    comment: string;
+    isDirectory: boolean;
+    children?: Map<string, StructureItem>;
+}
+
 // 激活插件
 export function activate(context: vscode.ExtensionContext) {
     console.log('项目结构生成器插件已激活');
@@ -35,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
             const config = vscode.workspace.getConfiguration('projectStructure');
             const outputFileName = config.get('outputFileName') || 'README';
             
-            const structure = await generateProjectStructure(scanPath);
+            const structure = await generateProjectStructure(scanPath, rootPath);
             await writeToReadme(rootPath, structure);
             vscode.window.showInformationMessage(`项目结构已成功生成到 ${path.join(rootPath, `${outputFileName}.md`)}`);
         } catch (error) {
@@ -51,14 +59,161 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(generateCommand, configureCommand);
 }
 
+// 解析现有的项目结构
+function parseExistingStructure(content: string): Map<string, StructureItem> {
+    const structureMap = new Map<string, StructureItem>();
+    
+    // 提取项目结构部分 - 支持多种标题格式
+    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
+    const match = content.match(structureRegex);
+    
+    if (!match) {
+        return structureMap;
+    }
+    
+    // 提取代码块中的内容
+    const codeBlockRegex = /```([\s\S]*?)```/;
+    const codeMatch = match[0].match(codeBlockRegex);
+    
+    if (!codeMatch) {
+        return structureMap;
+    }
+    
+        const lines = codeMatch[1].split('\n');
+    const items: { name: string, comment: string, level: number, lineIndex: number }[] = [];
+    
+    // 第一遍：提取所有项目信息
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        // 计算缩进级别 - 修正逻辑
+        let level = 0;
+        
+        // 根据树形结构的格式来判断级别
+        if (line.match(/^[├└]──/)) {
+            // 直接以├──或└──开始的是第1级（根目录的直接子项目）
+            level = 1;
+        } else if (line.match(/^[^│\s]/)) {
+            // 不以│或空格开始的是根级（级别0）
+            level = 0;
+        } else {
+            // 包含│符号的行，统计│的数量+1
+            const barCount = (line.match(/│/g) || []).length;
+            level = barCount + 1;
+        }
+        
+        console.log(`行: "${line.substring(0, 50)}..." -> 缩进级别: ${level}`);
+        
+        // 提取文件名和注释 - 更精确的解析逻辑
+        let cleanLine = line.trim();
+        
+        // 移除树形结构的符号，保留文件名和注释
+        cleanLine = cleanLine.replace(/^[│\s]*/, ''); // 移除前导的│和空格
+        cleanLine = cleanLine.replace(/^[├└]──\s*/, ''); // 移除├──或└──及其后的空格
+        
+        // 检查是否有 # 分隔符 - 支持多种格式
+        let name = '';
+        let comment = '';
+        
+        if (cleanLine.includes(' # ')) {
+            // 标准格式：文件名 # 注释
+            const parts = cleanLine.split(' # ');
+            name = parts[0].trim();
+            comment = parts.slice(1).join(' # ').trim();
+        } else if (cleanLine.includes(' #')) {
+            // 紧凑格式：文件名 #注释 或 文件名 #
+            const parts = cleanLine.split(' #');
+            name = parts[0].trim();
+            comment = parts.slice(1).join(' #').trim();
+        } else {
+            // 没有分隔符
+            name = cleanLine.trim();
+            comment = '';
+        }
+        
+
+        
+        if (name) {
+            items.push({ name, comment, level, lineIndex: i });
+        }
+    }
+    
+    // 第二遍：构建结构，根据下一级是否有子项判断目录
+    const stack: { item: StructureItem, level: number }[] = [];
+    
+    for (let i = 0; i < items.length; i++) {
+        const { name, comment, level } = items[i];
+        
+        // 判断是否为目录：检查下一个项目是否比当前级别更深
+        const isDirectory = level === 0 || // 根目录总是目录
+                           (i + 1 < items.length && items[i + 1].level > level);
+        
+        const item: StructureItem = {
+            name,
+            comment,
+            isDirectory,
+            children: isDirectory ? new Map() : undefined
+        };
+        
+        if (level === 0) {
+            structureMap.set(name, item);
+            stack.length = 0;
+            stack.push({ item, level });
+        } else {
+            // 找到正确的父级
+            while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+                stack.pop();
+            }
+            
+            if (stack.length > 0) {
+                const parent = stack[stack.length - 1].item;
+                if (parent.children) {
+                    parent.children.set(name, item);
+                }
+            }
+            
+            stack.push({ item, level });
+        }
+    }
+    
+    return structureMap;
+}
+
 // 生成项目结构
-async function generateProjectStructure(rootPath: string): Promise<string> {
+async function generateProjectStructure(rootPath: string, workspaceRoot: string): Promise<string> {
     const config = vscode.workspace.getConfiguration('projectStructure');
     const ignoredPatterns: string[] = config.get('ignoredPatterns') || [];
     const maxDepth: number = config.get('maxDepth') || 5;
+    const outputFileName = config.get('outputFileName') || 'README';
+    
+    // 读取现有的结构
+    const outputFilePath = path.join(workspaceRoot, `${outputFileName}.md`);
+    let existingStructure = new Map<string, StructureItem>();
+    
+    try {
+        if (fs.existsSync(outputFilePath)) {
+            const existingContent = fs.readFileSync(outputFilePath, 'utf8');
+            console.log(`读取到的原始内容（前500字符）:`, existingContent.substring(0, 500));
+            existingStructure = parseExistingStructure(existingContent);
+            console.log(`解析后的根级结构:`, Array.from(existingStructure.keys()));
+            if (existingStructure.size > 0) {
+                const firstKey = Array.from(existingStructure.keys())[0];
+                const firstItem = existingStructure.get(firstKey);
+                console.log(`第一个根项目 ${firstKey}:`, {
+                    comment: firstItem?.comment,
+                    isDirectory: firstItem?.isDirectory,
+                    childrenCount: firstItem?.children?.size || 0,
+                    childrenKeys: firstItem?.children ? Array.from(firstItem.children.keys()).slice(0, 5) : []
+                });
+            }
+        }
+    } catch (error) {
+        console.log(`无法读取现有结构: ${error}`);
+    }
 
-    let structureContent = '# 项目结构\n\n```\n';
-    structureContent += await scanDirectory(rootPath, '', ignoredPatterns, 0, maxDepth);
+    let structureContent = '- 项目结构\n\n```\n';
+    structureContent += await scanDirectory(rootPath, '', ignoredPatterns, 0, maxDepth, existingStructure, undefined);
     structureContent += '```\n';
 
     return structureContent;
@@ -70,7 +225,9 @@ async function scanDirectory(
     prefix: string, 
     ignoredPatterns: string[], 
     currentDepth: number,
-    maxDepth: number
+    maxDepth: number,
+    existingStructure: Map<string, StructureItem>,
+    currentStructureLevel?: Map<string, StructureItem>
 ): Promise<string> {
     if (currentDepth > maxDepth) {
         return '';
@@ -81,7 +238,17 @@ async function scanDirectory(
     
     // 添加当前目录名称（根目录特殊处理）
     if (prefix === '') {
-        result += `${dirName}\n`;
+        console.log(`处理根目录: ${dirName}`);
+        console.log(`existingStructure有${existingStructure.size}个根项目:`, Array.from(existingStructure.keys()));
+        const existingItem = existingStructure.get(dirName);
+        console.log(`查找根目录 ${dirName}:`, existingItem ? '找到' : '未找到');
+        const comment = existingItem?.comment || '';
+        result += `${dirName} # ${comment}\n`;
+        currentStructureLevel = existingItem?.children;
+        console.log(`根目录的子级数量:`, currentStructureLevel?.size || 0);
+        if (currentStructureLevel && currentStructureLevel.size > 0) {
+            console.log(`根目录的子项目:`, Array.from(currentStructureLevel.keys()).slice(0, 5));
+        }
     }
 
     try {
@@ -95,17 +262,18 @@ async function scanDirectory(
             return a.localeCompare(b);
         });
 
+        // 过滤掉应该忽略的文件
+        const filteredFiles = sortedFiles.filter(file => {
+            const filePath = path.join(dirPath, file);
+            return !shouldIgnore(file, filePath, ignoredPatterns);
+        });
+
         // 处理子文件和目录
-        for (let i = 0; i < sortedFiles.length; i++) {
-            const file = sortedFiles[i];
+        for (let i = 0; i < filteredFiles.length; i++) {
+            const file = filteredFiles[i];
             const filePath = path.join(dirPath, file);
             
-            // 检查是否应该忽略此文件或目录
-            if (shouldIgnore(file, filePath, ignoredPatterns)) {
-                continue;
-            }
-
-            const isLast = i === sortedFiles.length - 1;
+            const isLast = i === filteredFiles.length - 1;
             const stats = fs.statSync(filePath);
             const isDirectory = stats.isDirectory();
             
@@ -114,8 +282,21 @@ async function scanDirectory(
             // 确定子项的前缀
             const childPrefix = isLast ? '    ' : '│   ';
             
+            // 查找现有的注释
+            let existingComment = '';
+            let childStructureLevel: Map<string, StructureItem> | undefined;
+            
+            if (currentStructureLevel) {
+                const existingItem = currentStructureLevel.get(file);
+                existingComment = existingItem?.comment || '';
+                childStructureLevel = existingItem?.children;
+                console.log(`查找文件: ${file}, 在${currentStructureLevel.size}个项目中, 找到: ${!!existingItem}, 注释: "${existingComment}"`);
+            } else {
+                console.log(`查找文件: ${file}, currentStructureLevel为空`);
+            }
+            
             // 添加当前文件或目录
-            result += `${prefix}${currentPrefix}${file}${isDirectory ? '' : ''}\n`;
+            result += `${prefix}${currentPrefix}${file} # ${existingComment}\n`;
             
             // 如果是目录，递归处理
             if (isDirectory) {
@@ -124,7 +305,9 @@ async function scanDirectory(
                     prefix + childPrefix, 
                     ignoredPatterns, 
                     currentDepth + 1,
-                    maxDepth
+                    maxDepth,
+                    existingStructure,
+                    childStructureLevel
                 );
             }
         }
@@ -133,6 +316,27 @@ async function scanDirectory(
     }
 
     return result;
+}
+
+// 在结构中查找项目
+function findItemInStructure(structure: Map<string, StructureItem>, itemName: string): StructureItem | undefined {
+    // 先在当前级别查找
+    const item = structure.get(itemName);
+    if (item) {
+        return item;
+    }
+    
+    // 在子级别递归查找
+    for (const [, childItem] of structure) {
+        if (childItem.children) {
+            const found = findItemInStructure(childItem.children, itemName);
+            if (found) {
+                return found;
+            }
+        }
+    }
+    
+    return undefined;
 }
 
 // 检查是否应该忽略文件或目录
@@ -167,8 +371,8 @@ async function writeToReadme(targetPath: string, content: string): Promise<void>
         console.log(`${outputFileName}.md不存在，将创建新文件`);
     }
 
-    // 如果已存在项目结构部分，则替换它
-    const structureRegex = /# 项目结构\s*\n\s*```[\s\S]*?```\s*\n/;
+    // 如果已存在项目结构部分，则替换它 - 支持多种标题格式
+    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
     if (structureRegex.test(existingContent)) {
         existingContent = existingContent.replace(structureRegex, content);
     } else {
