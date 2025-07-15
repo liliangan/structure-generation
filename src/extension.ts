@@ -28,15 +28,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
         rootPath = workspaceFolders[0].uri.fsPath;
         
-        // 如果是从右键菜单调用并且有资源，使用该资源作为扫描路径
-        if (resource && resource.fsPath) {
-            const stats = fs.statSync(resource.fsPath);
-            // 如果右键点击的是文件，则使用其所在目录
-            scanPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
-        } else {
-            // 如果是从命令面板调用，则使用当前工作区作为扫描路径
-            scanPath = rootPath;
-        }
+        // 生成项目结构始终扫描整个项目根目录
+        scanPath = rootPath;
         
         try {
             // 从配置中获取输出文件名
@@ -51,12 +44,48 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    // 注册生成目录结构命令
+    let generateDirectoryCommand = vscode.commands.registerCommand('project-structure.generateDirectory', async (resource: vscode.Uri | undefined) => {
+        // 确定要扫描的目录路径和生成README的目录路径
+        let scanPath: string;
+        let outputPath: string;
+        
+        // 如果是从右键菜单调用并且有资源
+        if (resource && resource.fsPath) {
+            const stats = fs.statSync(resource.fsPath);
+            // 如果右键点击的是文件，则使用其所在目录
+            scanPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
+            outputPath = scanPath; // 生成到当前目录
+        } else {
+            // 如果是从命令面板调用，则使用当前工作区
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                vscode.window.showErrorMessage('请先打开一个项目文件夹');
+                return;
+            }
+            scanPath = workspaceFolders[0].uri.fsPath;
+            outputPath = scanPath;
+        }
+        
+        try {
+            // 从配置中获取目录输出文件名
+            const config = vscode.workspace.getConfiguration('projectStructure');
+            const outputFileName = (config.get('directoryOutputFileName') as string) || 'README';
+            
+            const structure = await generateDirectoryStructure(scanPath, outputPath, outputFileName);
+            await writeToFile(outputPath, structure, outputFileName);
+            vscode.window.showInformationMessage(`目录结构已成功生成到 ${path.join(outputPath, `${outputFileName}.md`)}`);
+        } catch (error) {
+            vscode.window.showErrorMessage(`生成目录结构失败: ${error}`);
+        }
+    });
+
     // 注册配置命令
     let configureCommand = vscode.commands.registerCommand('project-structure.configure', () => {
         vscode.commands.executeCommand('workbench.action.openSettings', 'projectStructure');
     });
 
-    context.subscriptions.push(generateCommand, configureCommand);
+    context.subscriptions.push(generateCommand, generateDirectoryCommand, configureCommand);
 }
 
 // 解析现有的项目结构
@@ -64,7 +93,7 @@ function parseExistingStructure(content: string): Map<string, StructureItem> {
     const structureMap = new Map<string, StructureItem>();
     
     // 提取项目结构部分 - 支持多种标题格式
-    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
+    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
     const match = content.match(structureRegex);
     
     if (!match) {
@@ -103,7 +132,7 @@ function parseExistingStructure(content: string): Map<string, StructureItem> {
             level = barCount + 1;
         }
         
-        console.log(`行: "${line.substring(0, 50)}..." -> 缩进级别: ${level}`);
+
         
         // 提取文件名和注释 - 更精确的解析逻辑
         let cleanLine = line.trim();
@@ -180,11 +209,23 @@ function parseExistingStructure(content: string): Map<string, StructureItem> {
     return structureMap;
 }
 
+// 获取本地化标题
+function getLocalizedTitle(isProject: boolean = true): string {
+    const locale = vscode.env.language;
+    if (locale.startsWith('zh')) {
+        // 中文环境
+        return isProject ? '## 项目结构' : '## 目录结构';
+    } else {
+        // 英文环境
+        return isProject ? '## Project Structure' : '## Directory Structure';
+    }
+}
+
 // 生成项目结构
 async function generateProjectStructure(rootPath: string, workspaceRoot: string): Promise<string> {
     const config = vscode.workspace.getConfiguration('projectStructure');
     const ignoredPatterns: string[] = config.get('ignoredPatterns') || [];
-    const maxDepth: number = config.get('maxDepth') || 5;
+    const maxDepth: number = config.get('maxDepth') || 10;
     const outputFileName = config.get('outputFileName') || 'README';
     
     // 读取现有的结构
@@ -194,25 +235,41 @@ async function generateProjectStructure(rootPath: string, workspaceRoot: string)
     try {
         if (fs.existsSync(outputFilePath)) {
             const existingContent = fs.readFileSync(outputFilePath, 'utf8');
-            console.log(`读取到的原始内容（前500字符）:`, existingContent.substring(0, 500));
             existingStructure = parseExistingStructure(existingContent);
-            console.log(`解析后的根级结构:`, Array.from(existingStructure.keys()));
-            if (existingStructure.size > 0) {
-                const firstKey = Array.from(existingStructure.keys())[0];
-                const firstItem = existingStructure.get(firstKey);
-                console.log(`第一个根项目 ${firstKey}:`, {
-                    comment: firstItem?.comment,
-                    isDirectory: firstItem?.isDirectory,
-                    childrenCount: firstItem?.children?.size || 0,
-                    childrenKeys: firstItem?.children ? Array.from(firstItem.children.keys()).slice(0, 5) : []
-                });
-            }
         }
     } catch (error) {
         console.log(`无法读取现有结构: ${error}`);
     }
 
-    let structureContent = '- 项目结构\n\n```\n';
+    const title = getLocalizedTitle(true);
+    let structureContent = `${title}\n\n\`\`\`\n`;
+    structureContent += await scanDirectory(rootPath, '', ignoredPatterns, 0, maxDepth, existingStructure, undefined);
+    structureContent += '```\n';
+
+    return structureContent;
+}
+
+// 生成目录结构
+async function generateDirectoryStructure(rootPath: string, outputPath: string, outputFileName: string): Promise<string> {
+    const config = vscode.workspace.getConfiguration('projectStructure');
+    const ignoredPatterns: string[] = config.get('ignoredPatterns') || [];
+    const maxDepth: number = config.get('maxDepth') || 10;
+    
+    // 读取现有的结构
+    const outputFilePath = path.join(outputPath, `${outputFileName}.md`);
+    let existingStructure = new Map<string, StructureItem>();
+    
+    try {
+        if (fs.existsSync(outputFilePath)) {
+            const existingContent = fs.readFileSync(outputFilePath, 'utf8');
+            existingStructure = parseExistingStructure(existingContent);
+        }
+    } catch (error) {
+        console.log(`无法读取现有结构: ${error}`);
+    }
+
+    const title = getLocalizedTitle(false);
+    let structureContent = `${title}\n\n\`\`\`\n`;
     structureContent += await scanDirectory(rootPath, '', ignoredPatterns, 0, maxDepth, existingStructure, undefined);
     structureContent += '```\n';
 
@@ -238,17 +295,10 @@ async function scanDirectory(
     
     // 添加当前目录名称（根目录特殊处理）
     if (prefix === '') {
-        console.log(`处理根目录: ${dirName}`);
-        console.log(`existingStructure有${existingStructure.size}个根项目:`, Array.from(existingStructure.keys()));
         const existingItem = existingStructure.get(dirName);
-        console.log(`查找根目录 ${dirName}:`, existingItem ? '找到' : '未找到');
         const comment = existingItem?.comment || '';
         result += `${dirName} # ${comment}\n`;
         currentStructureLevel = existingItem?.children;
-        console.log(`根目录的子级数量:`, currentStructureLevel?.size || 0);
-        if (currentStructureLevel && currentStructureLevel.size > 0) {
-            console.log(`根目录的子项目:`, Array.from(currentStructureLevel.keys()).slice(0, 5));
-        }
     }
 
     try {
@@ -290,9 +340,6 @@ async function scanDirectory(
                 const existingItem = currentStructureLevel.get(file);
                 existingComment = existingItem?.comment || '';
                 childStructureLevel = existingItem?.children;
-                console.log(`查找文件: ${file}, 在${currentStructureLevel.size}个项目中, 找到: ${!!existingItem}, 注释: "${existingComment}"`);
-            } else {
-                console.log(`查找文件: ${file}, currentStructureLevel为空`);
             }
             
             // 添加当前文件或目录
@@ -349,8 +396,15 @@ function shouldIgnore(fileName: string, filePath: string, ignoredPatterns: strin
                 .replace(/\*/g, '.*');
             return new RegExp(`^${regexPattern}$`).test(fileName);
         }
-        // 精确匹配文件名或路径包含模式
-        return fileName === pattern || filePath.includes(pattern);
+        
+        // 精确匹配文件名
+        if (fileName === pattern) {
+            return true;
+        }
+        
+        // 检查路径中的目录名是否匹配（避免子字符串误匹配）
+        const pathParts = filePath.split(path.sep);
+        return pathParts.some(part => part === pattern);
     });
 }
 
@@ -372,7 +426,41 @@ async function writeToReadme(targetPath: string, content: string): Promise<void>
     }
 
     // 如果已存在项目结构部分，则替换它 - 支持多种标题格式
-    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
+    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
+    if (structureRegex.test(existingContent)) {
+        existingContent = existingContent.replace(structureRegex, content);
+    } else {
+        // 否则添加到文件末尾
+        existingContent = existingContent ? 
+            (existingContent.trim() + '\n\n' + content) : 
+            content;
+    }
+
+    // 写入文件
+    fs.writeFileSync(outputFilePath, existingContent);
+    
+    // 在VS Code中打开生成的文件
+    vscode.workspace.openTextDocument(outputFilePath).then(doc => {
+        vscode.window.showTextDocument(doc);
+    });
+}
+
+// 写入到指定目录的文件
+async function writeToFile(targetPath: string, content: string, fileName: string): Promise<void> {
+    const outputFilePath = path.join(targetPath, `${fileName}.md`);
+    let existingContent = '';
+
+    // 检查输出文件是否已存在
+    try {
+        if (fs.existsSync(outputFilePath)) {
+            existingContent = fs.readFileSync(outputFilePath, 'utf8');
+        }
+    } catch (error) {
+        console.log(`${fileName}.md不存在，将创建新文件`);
+    }
+
+    // 如果已存在结构部分，则替换它 - 支持多种标题格式
+    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
     if (structureRegex.test(existingContent)) {
         existingContent = existingContent.replace(structureRegex, content);
     } else {

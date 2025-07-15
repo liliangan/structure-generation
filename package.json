@@ -27,6 +27,10 @@
         "title": "%project-structure.generate%"
       },
       {
+        "command": "project-structure.generateDirectory",
+        "title": "%project-structure.generateDirectory%"
+      },
+      {
         "command": "project-structure.configure",
         "title": "%project-structure.configure%"
       }
@@ -36,7 +40,12 @@
         {
           "when": "explorerResourceIsFolder",
           "command": "project-structure.generate",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "when": "explorerResourceIsFolder",
+          "command": "project-structure.generateDirectory",
+          "group": "navigation@2"
         }
       ],
       "editor/context": [
@@ -49,6 +58,16 @@
     "configuration": {
       "title": "%configuration.title%",
       "properties": {
+        "projectStructure.outputFileName": {
+          "type": "string",
+          "default": "README",
+          "description": "%configuration.outputFileName.description%"
+        },
+        "projectStructure.directoryOutputFileName": {
+          "type": "string",
+          "default": "README",
+          "description": "%configuration.directoryOutputFileName.description%"
+        },
         "projectStructure.ignoredPatterns": {
           "type": "array",
           "default": [
@@ -61,13 +80,8 @@
         },
         "projectStructure.maxDepth": {
           "type": "number",
-          "default": 5,
+          "default": 10,
           "description": "%configuration.maxDepth.description%"
-        },
-        "projectStructure.outputFileName": {
-          "type": "string",
-          "default": "README",
-          "description": "%configuration.outputFileName.description%"
         }
       }
     }
