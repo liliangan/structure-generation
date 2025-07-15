@@ -2,7 +2,7 @@
   "name": "project-structure-generator",
   "displayName": "Project Structure Generator (项目结构生成器)",
   "description": "扫描项目文件，生成包含项目结构的文件 | Scan project files and generate a file containing the project structure",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "LiLiangAn-structure-generator",
   "icon": "images/icon.png",
   "author": {
@@ -71,10 +71,11 @@
         "projectStructure.ignoredPatterns": {
           "type": "array",
           "default": [
-            "node_modules",
-            "dist",
+            ".git",
+            ".idea",
             ".vscode",
-            ".idea"
+            "dist",
+            "node_modules"
           ],
           "description": "%configuration.ignoredPatterns.description%"
         },
@@ -82,6 +83,11 @@
           "type": "number",
           "default": 10,
           "description": "%configuration.maxDepth.description%"
+        },
+        "projectStructure.autoUpdate": {
+          "type": "boolean",
+          "default": false,
+          "description": "%configuration.autoUpdate.description%"
         }
       }
     }

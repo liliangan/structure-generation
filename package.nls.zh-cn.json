@@ -6,5 +6,6 @@
   "configuration.ignoredPatterns.description": "要忽略的文件或目录模式",
   "configuration.maxDepth.description": "扫描的最大目录深度",
   "configuration.outputFileName.description": "生成项目结构的文件名称（不含扩展名，将自动添加.md）",
-  "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将自动添加.md）"
+  "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将自动添加.md）",
+  "configuration.autoUpdate.description": "当文件或文件夹发生变化时自动更新项目结构"
 }

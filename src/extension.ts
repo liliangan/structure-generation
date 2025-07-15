@@ -86,6 +86,9 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(generateCommand, generateDirectoryCommand, configureCommand);
+    
+    // 设置文件系统监听器
+    setupFileWatcher(context);
 }
 
 // 解析现有的项目结构
@@ -389,6 +392,11 @@ function findItemInStructure(structure: Map<string, StructureItem>, itemName: st
 // 检查是否应该忽略文件或目录
 function shouldIgnore(fileName: string, filePath: string, ignoredPatterns: string[]): boolean {
     return ignoredPatterns.some(pattern => {
+        // 跳过空字符串
+        if (!pattern || pattern.trim() === '') {
+            return false;
+        }
+        
         // 简单的通配符匹配
         if (pattern.includes('*')) {
             const regexPattern = pattern
@@ -477,6 +485,68 @@ async function writeToFile(targetPath: string, content: string, fileName: string
     vscode.workspace.openTextDocument(outputFilePath).then(doc => {
         vscode.window.showTextDocument(doc);
     });
+}
+
+// 设置文件系统监听器
+function setupFileWatcher(context: vscode.ExtensionContext) {
+    // 监听文件创建
+    const onCreateDisposable = vscode.workspace.onDidCreateFiles(async (event) => {
+        await handleFileSystemChange('创建', event.files);
+    });
+    
+    // 监听文件删除
+    const onDeleteDisposable = vscode.workspace.onDidDeleteFiles(async (event) => {
+        await handleFileSystemChange('删除', event.files);
+    });
+    
+    // 监听文件重命名
+    const onRenameDisposable = vscode.workspace.onDidRenameFiles(async (event) => {
+        const files = event.files.map(file => file.newUri);
+        await handleFileSystemChange('重命名', files);
+    });
+    
+    context.subscriptions.push(onCreateDisposable, onDeleteDisposable, onRenameDisposable);
+}
+
+// 处理文件系统变化
+async function handleFileSystemChange(changeType: string, files: readonly vscode.Uri[]) {
+    const config = vscode.workspace.getConfiguration('projectStructure');
+    const autoUpdate = config.get('autoUpdate') as boolean;
+    
+    if (!autoUpdate) {
+        return;
+    }
+    
+    // 获取工作区根目录
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        return;
+    }
+    
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    
+    // 检查变化的文件是否在工作区内
+    const isInWorkspace = files.some(file => 
+        file.fsPath.startsWith(rootPath)
+    );
+    
+    if (!isInWorkspace) {
+        return;
+    }
+    
+    try {
+        // 自动更新项目结构
+        const structure = await generateProjectStructure(rootPath, rootPath);
+        await writeToReadme(rootPath, structure);
+        
+        // 显示更新通知
+        vscode.window.showInformationMessage(
+            `项目结构已自动更新（${changeType}了 ${files.length} 个文件）`
+        );
+    } catch (error) {
+        console.error('自动更新项目结构失败:', error);
+        vscode.window.showWarningMessage('自动更新项目结构失败，请手动更新');
+    }
 }
 
 // 插件停用时调用

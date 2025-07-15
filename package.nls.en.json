@@ -6,5 +6,6 @@
   "configuration.ignoredPatterns.description": "Patterns of files or directories to ignore",
   "configuration.maxDepth.description": "Maximum directory depth to scan",
   "configuration.outputFileName.description": "Output file name for project structure (without extension, .md will be added automatically)",
-  "configuration.directoryOutputFileName.description": "Output file name for directory structure (without extension, .md will be added automatically)"
+  "configuration.directoryOutputFileName.description": "Output file name for directory structure (without extension, .md will be added automatically)",
+  "configuration.autoUpdate.description": "Automatically update project structure when files or folders change"
 }
