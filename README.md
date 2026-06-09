@@ -10,7 +10,7 @@ A VS Code extension that scans project files and generates a structured director
 - **Smart File Comments**: Preserves and displays comments marked with `#` after file names
 - **Auto-Update**: Optional automatic regeneration when files/folders are created, deleted, or renamed
 - **Clipboard Export**: Copy project or directory structure without writing a file
-- **Multiple Output Formats**: Generate Markdown, Mermaid mindmap (`.mmd`), or CSV files
+- **Multiple Output Formats**: Generate Markdown, Mermaid mindmap (`.mmd`), CSV, or standalone HTML visualization files
 - **.gitignore Support**: Optionally applies `.gitignore` rules while scanning
 - **Generation Stats**: Shows directory, file, and ignored item counts after generation
 - **Flexible Configuration**: Customizable ignore patterns, scan depth, and output file names
@@ -70,7 +70,7 @@ Access settings by searching for "projectStructure" in VS Code settings or use t
 |---------|------|---------|-------------|
 | `projectStructure.outputFileName` | string | "README" | Output file name for project structure |
 | `projectStructure.directoryOutputFileName` | string | "README" | Output file name for directory structure |
-| `projectStructure.outputFormat` | string | "markdown" | Output format: `markdown`, `mindmap`, or `csv` |
+| `projectStructure.outputFormat` | string | "markdown" | Output format: `markdown`, `mindmap`, `csv`, or `html` |
 | `projectStructure.ignoredPatterns` | array | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | Files/directories to ignore |
 | `projectStructure.maxDepth` | number | 10 | Maximum directory depth to scan |
 | `projectStructure.autoUpdate` | boolean | false | Auto-update when files change |
@@ -83,6 +83,7 @@ Access settings by searching for "projectStructure" in VS Code settings or use t
 - `markdown`: Updates or creates a `.md` file and preserves comments in the existing structure block.
 - `mindmap`: Creates a Mermaid mindmap `.mmd` file for visualizing the project structure.
 - `csv`: Creates a `.csv` file with path, name, type, level, parent, and comment columns.
+- `html`: Creates a standalone `.html` tree view with search, expand/collapse controls, and summary stats.
 
 ### 🔄 Auto-Update Feature
 
@@ -159,7 +160,7 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 - **智能文件注释**：保留并显示文件名后用 `#` 标记的注释
 - **自动更新**：可选的文件/文件夹创建、删除或重命名时自动重新生成
 - **剪贴板导出**：无需写入文件，直接复制项目或目录结构
-- **多输出格式**：支持生成 Markdown、Mermaid 思维导图（`.mmd`）或 CSV 文件
+- **多输出格式**：支持生成 Markdown、Mermaid 思维导图（`.mmd`）、CSV 或独立 HTML 可视化文件
 - **.gitignore 支持**：扫描时可自动应用 `.gitignore` 规则
 - **生成统计**：生成后显示目录数、文件数和忽略项数量
 - **灵活配置**：可自定义忽略模式、扫描深度和输出文件名
@@ -219,7 +220,7 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 |--------|------|--------|------|
 | `projectStructure.outputFileName` | 字符串 | "README" | 项目结构输出文件名 |
 | `projectStructure.directoryOutputFileName` | 字符串 | "README" | 目录结构输出文件名 |
-| `projectStructure.outputFormat` | 字符串 | "markdown" | 输出格式：`markdown`、`mindmap` 或 `csv` |
+| `projectStructure.outputFormat` | 字符串 | "markdown" | 输出格式：`markdown`、`mindmap`、`csv` 或 `html` |
 | `projectStructure.ignoredPatterns` | 数组 | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | 要忽略的文件/目录 |
 | `projectStructure.maxDepth` | 数字 | 10 | 扫描的最大目录深度 |
 | `projectStructure.autoUpdate` | 布尔值 | false | 文件变化时自动更新 |
@@ -232,6 +233,7 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 - `markdown`：更新或创建 `.md` 文件，并保留已有结构块里的注释。
 - `mindmap`：创建 Mermaid 思维导图 `.mmd` 文件，用于可视化项目结构。
 - `csv`：创建 `.csv` 文件，包含路径、名称、类型、层级、父目录和注释列。
+- `html`：创建独立 `.html` 树形视图，包含搜索、展开/折叠和统计信息。
 
 ### 🔄 自动更新功能
 

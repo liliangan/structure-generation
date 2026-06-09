@@ -16,7 +16,7 @@ interface StructureStats {
     ignored: number;
 }
 
-type OutputFormat = 'markdown' | 'mindmap' | 'csv';
+type OutputFormat = 'markdown' | 'mindmap' | 'csv' | 'html';
 
 interface GenerateOptions {
     scanPath: string;
@@ -40,6 +40,10 @@ interface StructureNode {
     comment: string;
     isDirectory: boolean;
     parentPath: string;
+}
+
+interface HtmlTreeNode extends StructureNode {
+    children: HtmlTreeNode[];
 }
 
 interface ScanContext {
@@ -500,6 +504,10 @@ function formatStructureContent(format: OutputFormat, title: string, treeContent
         return formatCsv(nodes);
     }
 
+    if (format === 'html') {
+        return formatHtml(nodes);
+    }
+
     return `${title}\n\n\`\`\`\n${treeContent}\`\`\`\n`;
 }
 
@@ -515,12 +523,13 @@ function formatMindmap(nodes: StructureNode[]): string {
 }
 
 function formatCsv(nodes: StructureNode[]): string {
+    const labels = getCsvLabels();
     const rows = [
-        ['Path', 'Name', 'Type', 'Level', 'Parent', 'Comment'],
+        [labels.path, labels.name, labels.type, labels.level, labels.parent, labels.comment],
         ...nodes.map(node => [
             node.relativePath || node.name,
             node.name,
-            node.isDirectory ? 'directory' : 'file',
+            node.isDirectory ? labels.directory : labels.file,
             String(node.level),
             node.parentPath,
             node.comment
@@ -528,6 +537,392 @@ function formatCsv(nodes: StructureNode[]): string {
     ];
 
     return `${rows.map(row => row.map(escapeCsvCell).join(',')).join('\n')}\n`;
+}
+
+function getCsvLabels() {
+    if (vscode.env.language.startsWith('zh')) {
+        return {
+            path: '路径',
+            name: '名称',
+            type: '类型',
+            level: '层级',
+            parent: '父目录',
+            comment: '注释',
+            directory: '目录',
+            file: '文件'
+        };
+    }
+
+    return {
+        path: 'Path',
+        name: 'Name',
+        type: 'Type',
+        level: 'Level',
+        parent: 'Parent',
+        comment: 'Comment',
+        directory: 'directory',
+        file: 'file'
+    };
+}
+
+function formatHtml(nodes: StructureNode[]): string {
+    const root = buildHtmlTree(nodes);
+    const labels = getHtmlLabels();
+    const totalDirectories = nodes.filter(node => node.isDirectory).length;
+    const totalFiles = nodes.filter(node => !node.isDirectory).length;
+    const maxDepth = nodes.reduce((depth, node) => Math.max(depth, node.level), 0);
+    const treeMarkup = root ? renderHtmlNode(root) : `<p class="empty">${labels.empty}</p>`;
+    const generatedAt = new Date().toLocaleString(vscode.env.language.startsWith('zh') ? 'zh-CN' : 'en');
+
+    return `<!doctype html>
+<html lang="${labels.lang}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(root?.name || 'Project Structure')}</title>
+  <style>
+    :root {
+      --bg: #f6f3eb;
+      --panel: #fffdf7;
+      --ink: #1f2a2e;
+      --muted: #687177;
+      --line: #d7d0c1;
+      --accent: #176b87;
+      --accent-soft: #d7edf2;
+      --file: #7b5e2b;
+      --shadow: 0 18px 50px rgba(47, 38, 20, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(31,42,46,0.035) 1px, transparent 1px),
+        linear-gradient(rgba(31,42,46,0.035) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+    }
+    .shell {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 32px auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-end;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 64px);
+      line-height: 0.95;
+      letter-spacing: 0;
+      max-width: 760px;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      margin: 22px 0;
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.86);
+      color: var(--ink);
+      padding: 13px 14px;
+      border-radius: 6px;
+      font: 15px ui-sans-serif, system-ui, sans-serif;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 0 14px;
+      font: 600 13px ui-sans-serif, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(47, 38, 20, 0.06);
+    }
+    .stat strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      margin-top: 6px;
+      font: 12px ui-sans-serif, system-ui, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .tree {
+      background: rgba(255, 253, 247, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      overflow: auto;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding-left: 24px;
+      position: relative;
+    }
+    ul ul::before {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: 0;
+      bottom: 10px;
+      border-left: 1px solid var(--line);
+    }
+    li {
+      position: relative;
+      margin: 4px 0;
+      min-width: 260px;
+    }
+    li::before {
+      content: "";
+      position: absolute;
+      left: -14px;
+      top: 15px;
+      width: 14px;
+      border-top: 1px solid var(--line);
+    }
+    details > summary {
+      list-style: none;
+      cursor: pointer;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    .node {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      min-height: 28px;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font: 14px ui-sans-serif, system-ui, sans-serif;
+    }
+    .dir {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .file {
+      color: var(--file);
+    }
+    .name {
+      overflow-wrap: anywhere;
+    }
+    .comment {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .hidden { display: none; }
+    .empty {
+      color: var(--muted);
+      font: 15px ui-sans-serif, system-ui, sans-serif;
+    }
+    @media (max-width: 720px) {
+      header, .toolbar { grid-template-columns: 1fr; display: grid; }
+      .meta { text-align: left; }
+      .stats { grid-template-columns: 1fr; }
+      .shell { width: min(100vw - 24px, 1180px); margin: 18px auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <h1>${escapeHtml(root?.name || 'Project Structure')}</h1>
+      <div class="meta">${labels.generated} ${escapeHtml(generatedAt)}</div>
+    </header>
+    <section class="stats" aria-label="${labels.statsAria}">
+      <div class="stat"><strong>${totalDirectories}</strong><span>${labels.directories}</span></div>
+      <div class="stat"><strong>${totalFiles}</strong><span>${labels.files}</span></div>
+      <div class="stat"><strong>${maxDepth}</strong><span>${labels.maxDepth}</span></div>
+    </section>
+    <section class="toolbar">
+      <input id="search" type="search" placeholder="${labels.searchPlaceholder}" aria-label="${labels.searchAria}">
+      <button id="toggle" type="button">${labels.expandAll}</button>
+    </section>
+    <section class="tree" id="tree">${treeMarkup}</section>
+  </main>
+  <script>
+    const search = document.getElementById('search');
+    const toggle = document.getElementById('toggle');
+    const tree = document.getElementById('tree');
+    const labels = ${JSON.stringify({
+        expandAll: labels.expandAll,
+        collapseAll: labels.collapseAll
+    })};
+    let expanded = false;
+
+    toggle.addEventListener('click', () => {
+      expanded = !expanded;
+      tree.querySelectorAll('details').forEach(detail => detail.open = expanded);
+      toggle.textContent = expanded ? labels.collapseAll : labels.expandAll;
+    });
+
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      const items = Array.from(tree.querySelectorAll('li[data-path]'));
+      if (!query) {
+        items.forEach(item => item.classList.remove('hidden'));
+        return;
+      }
+
+      const visible = new Set();
+      const matched = items.filter(item => item.dataset.search.includes(query));
+
+      matched.forEach(item => {
+        visible.add(item.dataset.path);
+        const parentPath = item.dataset.parent;
+        if (parentPath) {
+          parentPath.split('/').reduce((current, part) => {
+            const next = current ? current + '/' + part : part;
+            visible.add(next);
+            return next;
+          }, '');
+        }
+
+        item.querySelectorAll('li[data-path]').forEach(child => visible.add(child.dataset.path));
+      });
+
+      items.forEach(item => {
+        const shouldShow = visible.has(item.dataset.path);
+        item.classList.toggle('hidden', !shouldShow);
+        if (shouldShow) {
+          item.closest('details')?.setAttribute('open', '');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+`;
+}
+
+function buildHtmlTree(nodes: StructureNode[]): HtmlTreeNode | undefined {
+    const nodeMap = new Map<string, HtmlTreeNode>();
+    for (const node of nodes) {
+        nodeMap.set(node.relativePath, { ...node, children: [] });
+    }
+
+    let root: HtmlTreeNode | undefined;
+    for (const node of nodeMap.values()) {
+        if (node.level === 0) {
+            root = node;
+            continue;
+        }
+
+        const parent = nodeMap.get(node.parentPath);
+        if (parent) {
+            parent.children.push(node);
+        }
+    }
+
+    return root;
+}
+
+function renderHtmlNode(node: HtmlTreeNode): string {
+    const searchText = escapeHtml(`${node.relativePath} ${node.name} ${node.comment}`.toLowerCase());
+    const rawNodePath = getHtmlNodeKey(node);
+    const rawParentPath = node.level === 0 ? '' : node.parentPath ? `${getHtmlRootName(node)}/${node.parentPath}` : getHtmlRootName(node);
+    const nodePath = escapeHtml(rawNodePath);
+    const parentPath = escapeHtml(rawParentPath);
+    const nodeClass = node.isDirectory ? 'node dir' : 'node file';
+    const icon = node.isDirectory ? '▸' : '•';
+    const label = `<span class="${nodeClass}"><span>${icon}</span><span class="name">${escapeHtml(node.name)}</span>${node.comment ? `<span class="comment">${escapeHtml(node.comment)}</span>` : ''}</span>`;
+
+    if (node.children.length === 0) {
+        return `<ul><li data-path="${nodePath}" data-parent="${parentPath}" data-search="${searchText}">${label}</li></ul>`;
+    }
+
+    const children = node.children.map(child => renderHtmlNode(child).replace(/^<ul>|<\/ul>$/g, '')).join('');
+    return `<ul><li data-path="${nodePath}" data-parent="${parentPath}" data-search="${searchText}"><details ${node.level <= 1 ? 'open' : ''}><summary>${label}</summary><ul>${children}</ul></details></li></ul>`;
+}
+
+function getHtmlNodeKey(node: StructureNode): string {
+    return node.relativePath ? `${getHtmlRootName(node)}/${node.relativePath}` : node.name;
+}
+
+function getHtmlRootName(node: StructureNode): string {
+    const normalizedPath = normalizePath(node.path);
+    const normalizedRelativePath = normalizePath(node.relativePath);
+    if (!normalizedRelativePath) {
+        return node.name;
+    }
+
+    const rootPath = normalizedPath.slice(0, normalizedPath.length - normalizedRelativePath.length).replace(/\/$/, '');
+    return path.basename(rootPath) || node.name;
+}
+
+function getHtmlLabels() {
+    const isChinese = vscode.env.language.startsWith('zh');
+    if (isChinese) {
+        return {
+            lang: 'zh-CN',
+            generated: '生成时间',
+            statsAria: '结构统计',
+            directories: '目录',
+            files: '文件',
+            maxDepth: '最大层级',
+            searchPlaceholder: '搜索路径或名称',
+            searchAria: '搜索项目结构',
+            expandAll: '全部展开',
+            collapseAll: '全部折叠',
+            empty: '没有可显示的结构。'
+        };
+    }
+
+    return {
+        lang: 'en',
+        generated: 'Generated',
+        statsAria: 'Structure statistics',
+        directories: 'Directories',
+        files: 'Files',
+        maxDepth: 'Max Depth',
+        searchPlaceholder: 'Search paths or names',
+        searchAria: 'Search project structure',
+        expandAll: 'Expand all',
+        collapseAll: 'Collapse all',
+        empty: 'No structure to display.'
+    };
+}
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 function getDisplayName(node: StructureNode): string {
@@ -546,7 +941,7 @@ function escapeCsvCell(value: string): string {
 function getOutputFormat(): OutputFormat {
     const config = vscode.workspace.getConfiguration('projectStructure');
     const format = config.get('outputFormat') as string;
-    if (format === 'mindmap' || format === 'csv') {
+    if (format === 'mindmap' || format === 'csv' || format === 'html') {
         return format;
     }
 
@@ -560,6 +955,10 @@ function getOutputExtension(format: OutputFormat): string {
 
     if (format === 'csv') {
         return 'csv';
+    }
+
+    if (format === 'html') {
+        return 'html';
     }
 
     return 'md';

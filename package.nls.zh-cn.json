@@ -8,7 +8,7 @@
   "configuration.maxDepth.description": "扫描的最大目录深度",
   "configuration.outputFileName.description": "生成项目结构的文件名称（不含扩展名，将按输出格式自动添加扩展名）",
   "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将按输出格式自动添加扩展名）",
-  "configuration.outputFormat.description": "输出格式：Markdown、Mermaid 思维导图或 CSV",
+  "configuration.outputFormat.description": "输出格式：Markdown、Mermaid 思维导图、CSV 或 HTML 可视化页面",
   "configuration.autoUpdate.description": "当文件或文件夹发生变化时自动更新项目结构",
   "configuration.useGitignore.description": "扫描时应用 .gitignore 规则",
   "configuration.excludeOutputFile.description": "从生成的结构中排除输出文件本身",
