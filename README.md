@@ -44,6 +44,13 @@ A VS Code extension that scans project files and generates a structured director
   - Command Palette: "Copy Project Structure to Clipboard"
   - Right-click on files/folders: "Copy Project Structure to Clipboard"
 
+#### 4. Convert Selected Structure
+- **What it does**: Converts selected tree text into HTML, CSV, or Mermaid mindmap output
+- **When to use**: When you already have a generated structure block in a Markdown file
+- **Access**:
+  - Select the structure text in the editor
+  - Right-click and choose "Convert Selected Structure To..."
+
 ### How to Access Commands
 
 #### Command Palette
@@ -193,6 +200,13 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 - **访问方式**：
   - 命令面板："复制项目结构到剪贴板"
   - 文件/文件夹右键："复制项目结构到剪贴板"
+
+#### 4. 转换选中的结构
+- **功能**：将编辑器中选中的树形结构转换为 HTML、CSV 或 Mermaid 思维导图
+- **使用场景**：已有 Markdown 文件里的结构块，需要临时转换成其他格式
+- **访问方式**：
+  - 在编辑器中选中结构文本
+  - 右键选择"将选中结构转换为..."
 
 ### 命令访问方式
 

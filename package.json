@@ -22,6 +22,7 @@
     "onCommand:project-structure.generate",
     "onCommand:project-structure.generateDirectory",
     "onCommand:project-structure.copy",
+    "onCommand:project-structure.convertSelection",
     "onCommand:project-structure.configure"
   ],
   "main": "./out/extension.js",
@@ -38,6 +39,10 @@
       {
         "command": "project-structure.copy",
         "title": "%project-structure.copy%"
+      },
+      {
+        "command": "project-structure.convertSelection",
+        "title": "%project-structure.convertSelection%"
       },
       {
         "command": "project-structure.configure",
@@ -69,6 +74,11 @@
         },
         {
           "command": "project-structure.copy",
+          "group": "navigation"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "project-structure.convertSelection",
           "group": "navigation"
         }
       ]

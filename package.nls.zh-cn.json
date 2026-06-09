@@ -2,6 +2,7 @@
   "project-structure.generate": "生成项目结构",
   "project-structure.generateDirectory": "生成目录结构",
   "project-structure.copy": "复制项目结构到剪贴板",
+  "project-structure.convertSelection": "将选中结构转换为...",
   "project-structure.configure": "配置项目结构生成器",
   "configuration.title": "项目结构生成器",
   "configuration.ignoredPatterns.description": "要忽略的文件或目录模式",

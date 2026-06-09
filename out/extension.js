@@ -154,11 +154,48 @@ function activate(context) {
             vscode.window.showErrorMessage(`复制项目结构失败: ${error}`);
         }
     });
+    // 注册将选中结构转换为其他格式命令
+    let convertSelectionCommand = vscode.commands.registerCommand('project-structure.convertSelection', async () => {
+        var _a, _b;
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.selection.isEmpty) {
+            vscode.window.showErrorMessage('请先选中项目结构文本');
+            return;
+        }
+        const selectedText = editor.document.getText(editor.selection);
+        const nodes = parseStructureNodesFromText(selectedText);
+        if (nodes.length === 0) {
+            vscode.window.showErrorMessage('未能从选中文本中解析出项目结构');
+            return;
+        }
+        const format = await vscode.window.showQuickPick([
+            { label: 'HTML 可视化页面', value: 'html' },
+            { label: 'CSV 表格', value: 'csv' },
+            { label: 'Mermaid 思维导图', value: 'mindmap' }
+        ], { placeHolder: '选择要转换的格式' });
+        if (!format) {
+            return;
+        }
+        const extension = getOutputExtension(format.value);
+        const sourcePath = editor.document.uri.scheme === 'file' ? editor.document.uri.fsPath : undefined;
+        const outputPath = sourcePath ? path.dirname(sourcePath) : (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
+        if (!outputPath) {
+            vscode.window.showErrorMessage('无法确定输出目录');
+            return;
+        }
+        const baseName = `${path.basename(nodes[0].name, path.extname(nodes[0].name))}-structure`;
+        const outputFilePath = path.join(outputPath, `${baseName}.${extension}`);
+        const content = formatConvertedSelection(format.value, nodes);
+        await fs.promises.writeFile(outputFilePath, content);
+        const doc = await vscode.workspace.openTextDocument(outputFilePath);
+        await vscode.window.showTextDocument(doc);
+        vscode.window.showInformationMessage(`已转换为 ${outputFilePath}`);
+    });
     // 注册配置命令
     let configureCommand = vscode.commands.registerCommand('project-structure.configure', () => {
         vscode.commands.executeCommand('workbench.action.openSettings', 'projectStructure');
     });
-    context.subscriptions.push(generateCommand, generateDirectoryCommand, copyCommand, configureCommand);
+    context.subscriptions.push(generateCommand, generateDirectoryCommand, copyCommand, convertSelectionCommand, configureCommand);
     // 设置文件系统监听器
     setupFileWatcher(context);
 }
@@ -422,6 +459,84 @@ function formatStructureContent(format, title, treeContent, nodes) {
     }
     return `${title}\n\n\`\`\`\n${treeContent}\`\`\`\n`;
 }
+function formatConvertedSelection(format, nodes) {
+    if (format === 'html') {
+        return formatHtml(nodes);
+    }
+    if (format === 'csv') {
+        return formatCsv(nodes);
+    }
+    if (format === 'mindmap') {
+        return formatMindmap(nodes);
+    }
+    return nodes.map(node => `${'  '.repeat(node.level)}${getDisplayName(node)}`).join('\n');
+}
+function parseStructureNodesFromText(text) {
+    const lines = text
+        .split(/\r?\n/)
+        .map(line => line.replace(/^```.*$/, '').trimEnd())
+        .filter(line => line.trim() && line.trim() !== '```');
+    const nodes = [];
+    const stack = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const parsed = parseStructureLine(line);
+        if (!parsed) {
+            continue;
+        }
+        const parent = parsed.level === 0 ? undefined : stack[parsed.level - 1];
+        const relativePath = parent ? path.join(parent.relativePath, parsed.name) : '';
+        const parentPath = (parent === null || parent === void 0 ? void 0 : parent.relativePath) || '';
+        const nodePath = relativePath || parsed.name;
+        const nextLine = lines[i + 1];
+        const nextParsed = nextLine ? parseStructureLine(nextLine) : undefined;
+        const isDirectory = parsed.level === 0 || Boolean(nextParsed && nextParsed.level > parsed.level) || parsed.name.endsWith('/');
+        const cleanName = parsed.name.endsWith('/') ? parsed.name.slice(0, -1) : parsed.name;
+        const node = {
+            name: cleanName,
+            path: nodePath,
+            relativePath,
+            level: parsed.level,
+            comment: parsed.comment,
+            isDirectory,
+            parentPath
+        };
+        nodes.push(node);
+        stack[parsed.level] = node;
+        stack.length = parsed.level + 1;
+    }
+    return nodes;
+}
+function parseStructureLine(line) {
+    const cleanedLine = line.replace(/\u00a0/g, ' ');
+    let level = 0;
+    if (/^[├└]──/.test(cleanedLine.trimStart())) {
+        level = 1;
+    }
+    else if (/^[^│\s]/.test(cleanedLine)) {
+        level = 0;
+    }
+    else {
+        const prefixMatch = cleanedLine.match(/^[│\s]*/);
+        const prefix = prefixMatch ? prefixMatch[0] : '';
+        const barCount = (prefix.match(/│/g) || []).length;
+        level = barCount + 1;
+    }
+    let content = cleanedLine.trim();
+    content = content.replace(/^[│\s]*/, '');
+    content = content.replace(/^[├└]──\s*/, '');
+    if (!content) {
+        return undefined;
+    }
+    let name = content;
+    let comment = '';
+    const commentIndex = content.indexOf(' #');
+    if (commentIndex >= 0) {
+        name = content.slice(0, commentIndex).trim();
+        comment = content.slice(commentIndex + 2).trim();
+    }
+    return name ? { name, comment, level } : undefined;
+}
 function formatMindmap(nodes) {
     const lines = ['mindmap'];
     for (const node of nodes) {
@@ -476,7 +591,7 @@ function formatHtml(nodes) {
     const totalDirectories = nodes.filter(node => node.isDirectory).length;
     const totalFiles = nodes.filter(node => !node.isDirectory).length;
     const maxDepth = nodes.reduce((depth, node) => Math.max(depth, node.level), 0);
-    const treeMarkup = root ? renderHtmlNode(root) : `<p class="empty">${labels.empty}</p>`;
+    const treeMarkup = root ? renderHtmlNode(root, root.name) : `<p class="empty">${labels.empty}</p>`;
     const generatedAt = new Date().toLocaleString(vscode.env.language.startsWith('zh') ? 'zh-CN' : 'en');
     return `<!doctype html>
 <html lang="${labels.lang}">
@@ -750,10 +865,12 @@ function buildHtmlTree(nodes) {
     }
     return root;
 }
-function renderHtmlNode(node) {
+function renderHtmlNode(node, rootName) {
     const searchText = escapeHtml(`${node.relativePath} ${node.name} ${node.comment}`.toLowerCase());
-    const rawNodePath = getHtmlNodeKey(node);
-    const rawParentPath = node.level === 0 ? '' : node.parentPath ? `${getHtmlRootName(node)}/${node.parentPath}` : getHtmlRootName(node);
+    const normalizedRelativePath = normalizePath(node.relativePath);
+    const normalizedParentPath = normalizePath(node.parentPath);
+    const rawNodePath = normalizedRelativePath ? `${rootName}/${normalizedRelativePath}` : rootName;
+    const rawParentPath = node.level === 0 ? '' : normalizedParentPath ? `${rootName}/${normalizedParentPath}` : rootName;
     const nodePath = escapeHtml(rawNodePath);
     const parentPath = escapeHtml(rawParentPath);
     const nodeClass = node.isDirectory ? 'node dir' : 'node file';
@@ -762,20 +879,8 @@ function renderHtmlNode(node) {
     if (node.children.length === 0) {
         return `<ul><li data-path="${nodePath}" data-parent="${parentPath}" data-search="${searchText}">${label}</li></ul>`;
     }
-    const children = node.children.map(child => renderHtmlNode(child).replace(/^<ul>|<\/ul>$/g, '')).join('');
+    const children = node.children.map(child => renderHtmlNode(child, rootName).replace(/^<ul>|<\/ul>$/g, '')).join('');
     return `<ul><li data-path="${nodePath}" data-parent="${parentPath}" data-search="${searchText}"><details ${node.level <= 1 ? 'open' : ''}><summary>${label}</summary><ul>${children}</ul></details></li></ul>`;
-}
-function getHtmlNodeKey(node) {
-    return node.relativePath ? `${getHtmlRootName(node)}/${node.relativePath}` : node.name;
-}
-function getHtmlRootName(node) {
-    const normalizedPath = normalizePath(node.path);
-    const normalizedRelativePath = normalizePath(node.relativePath);
-    if (!normalizedRelativePath) {
-        return node.name;
-    }
-    const rootPath = normalizedPath.slice(0, normalizedPath.length - normalizedRelativePath.length).replace(/\/$/, '');
-    return path.basename(rootPath) || node.name;
 }
 function getHtmlLabels() {
     const isChinese = vscode.env.language.startsWith('zh');
@@ -787,7 +892,7 @@ function getHtmlLabels() {
             directories: '目录',
             files: '文件',
             maxDepth: '最大层级',
-            searchPlaceholder: '搜索路径或名称',
+            searchPlaceholder: '搜索路径、名称或注释',
             searchAria: '搜索项目结构',
             expandAll: '全部展开',
             collapseAll: '全部折叠',
@@ -801,7 +906,7 @@ function getHtmlLabels() {
         directories: 'Directories',
         files: 'Files',
         maxDepth: 'Max Depth',
-        searchPlaceholder: 'Search paths or names',
+        searchPlaceholder: 'Search paths, names, or comments',
         searchAria: 'Search project structure',
         expandAll: 'Expand all',
         collapseAll: 'Collapse all',

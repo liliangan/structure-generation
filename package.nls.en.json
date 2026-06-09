@@ -2,6 +2,7 @@
   "project-structure.generate": "Generate Project Structure",
   "project-structure.generateDirectory": "Generate Directory Structure",
   "project-structure.copy": "Copy Project Structure to Clipboard",
+  "project-structure.convertSelection": "Convert Selected Structure To...",
   "project-structure.configure": "Configure Project Structure Generator",
   "configuration.title": "Project Structure Generator",
   "configuration.ignoredPatterns.description": "Patterns of files or directories to ignore",
