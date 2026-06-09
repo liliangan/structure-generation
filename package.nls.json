@@ -1,11 +1,16 @@
 {
   "project-structure.generate": "生成项目结构 | Generate Project Structure",
   "project-structure.generateDirectory": "生成目录结构 | Generate Directory Structure",
+  "project-structure.copy": "复制项目结构到剪贴板 | Copy Project Structure to Clipboard",
   "project-structure.configure": "配置项目结构生成器 | Configure Project Structure Generator",
   "configuration.title": "项目结构生成器 | Project Structure Generator",
   "configuration.ignoredPatterns.description": "要忽略的文件或目录模式 | Patterns of files or directories to ignore",
   "configuration.maxDepth.description": "扫描的最大目录深度 | Maximum directory depth to scan",
-  "configuration.outputFileName.description": "生成项目结构的文件名称（不含扩展名，将自动添加.md） | Output file name for project structure (without extension, .md will be added automatically)",
-  "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将自动添加.md） | Output file name for directory structure (without extension, .md will be added automatically)",
-  "configuration.autoUpdate.description": "当文件或文件夹发生变化时自动更新项目结构 | Automatically update project structure when files or folders change"
+  "configuration.outputFileName.description": "生成项目结构的文件名称（不含扩展名，将按输出格式自动添加扩展名） | Output file name for project structure (without extension, extension will be added based on output format)",
+  "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将按输出格式自动添加扩展名） | Output file name for directory structure (without extension, extension will be added based on output format)",
+  "configuration.outputFormat.description": "输出格式：Markdown、Mermaid 思维导图或 CSV | Output format: Markdown, Mermaid mindmap, or CSV",
+  "configuration.autoUpdate.description": "当文件或文件夹发生变化时自动更新项目结构 | Automatically update project structure when files or folders change",
+  "configuration.useGitignore.description": "扫描时应用 .gitignore 规则 | Apply .gitignore rules while scanning",
+  "configuration.excludeOutputFile.description": "从生成的结构中排除输出文件本身 | Exclude the output file itself from generated structure",
+  "configuration.showStats.description": "生成后显示目录、文件和忽略项统计 | Show directory, file, and ignored item counts after generation"
 }

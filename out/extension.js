@@ -38,6 +38,10 @@ exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+let autoUpdateTimer;
+let isGenerating = false;
+const autoUpdateDelayMs = 500;
+const structureSectionRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
 // 激活插件
 function activate(context) {
     console.log('项目结构生成器插件已激活');
@@ -59,9 +63,14 @@ function activate(context) {
             // 从配置中获取输出文件名
             const config = vscode.workspace.getConfiguration('projectStructure');
             const outputFileName = config.get('outputFileName') || 'README';
-            const structure = await generateProjectStructure(scanPath, rootPath);
-            await writeToReadme(rootPath, structure);
-            vscode.window.showInformationMessage(`项目结构已成功生成到 ${path.join(rootPath, `${outputFileName}.md`)}`);
+            const result = await generateStructure({
+                scanPath,
+                outputPath: rootPath,
+                outputFileName,
+                isProject: true
+            });
+            await writeStructureFile(rootPath, result.content, outputFileName, result.extension, true);
+            vscode.window.showInformationMessage(getGeneratedMessage(`项目结构已成功生成到 ${path.join(rootPath, `${outputFileName}.${result.extension}`)}`, result.stats));
         }
         catch (error) {
             vscode.window.showErrorMessage(`生成项目结构失败: ${error}`);
@@ -93,19 +102,63 @@ function activate(context) {
             // 从配置中获取目录输出文件名
             const config = vscode.workspace.getConfiguration('projectStructure');
             const outputFileName = config.get('directoryOutputFileName') || 'README';
-            const structure = await generateDirectoryStructure(scanPath, outputPath, outputFileName);
-            await writeToFile(outputPath, structure, outputFileName);
-            vscode.window.showInformationMessage(`目录结构已成功生成到 ${path.join(outputPath, `${outputFileName}.md`)}`);
+            const result = await generateStructure({
+                scanPath,
+                outputPath,
+                outputFileName,
+                isProject: false
+            });
+            await writeStructureFile(outputPath, result.content, outputFileName, result.extension, true);
+            vscode.window.showInformationMessage(getGeneratedMessage(`目录结构已成功生成到 ${path.join(outputPath, `${outputFileName}.${result.extension}`)}`, result.stats));
         }
         catch (error) {
             vscode.window.showErrorMessage(`生成目录结构失败: ${error}`);
+        }
+    });
+    // 注册复制结构到剪贴板命令
+    let copyCommand = vscode.commands.registerCommand('project-structure.copy', async (resource) => {
+        let scanPath;
+        let outputPath;
+        let outputFileName;
+        let isProject;
+        const config = vscode.workspace.getConfiguration('projectStructure');
+        if (resource && resource.fsPath) {
+            const stats = await fs.promises.stat(resource.fsPath);
+            scanPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
+            outputPath = scanPath;
+            outputFileName = config.get('directoryOutputFileName') || 'README';
+            isProject = false;
+        }
+        else {
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                vscode.window.showErrorMessage('请先打开一个项目文件夹');
+                return;
+            }
+            scanPath = workspaceFolders[0].uri.fsPath;
+            outputPath = scanPath;
+            outputFileName = config.get('outputFileName') || 'README';
+            isProject = true;
+        }
+        try {
+            const result = await generateStructure({
+                scanPath,
+                outputPath,
+                outputFileName,
+                isProject
+            });
+            await vscode.env.clipboard.writeText(result.content);
+            vscode.window.showInformationMessage(getGeneratedMessage('项目结构已复制到剪贴板', result.stats));
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`复制项目结构失败: ${error}`);
         }
     });
     // 注册配置命令
     let configureCommand = vscode.commands.registerCommand('project-structure.configure', () => {
         vscode.commands.executeCommand('workbench.action.openSettings', 'projectStructure');
     });
-    context.subscriptions.push(generateCommand, generateDirectoryCommand, configureCommand);
+    context.subscriptions.push(generateCommand, generateDirectoryCommand, copyCommand, configureCommand);
     // 设置文件系统监听器
     setupFileWatcher(context);
 }
@@ -113,8 +166,7 @@ function activate(context) {
 function parseExistingStructure(content) {
     const structureMap = new Map();
     // 提取项目结构部分 - 支持多种标题格式
-    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
-    const match = content.match(structureRegex);
+    const match = content.match(structureSectionRegex);
     if (!match) {
         return structureMap;
     }
@@ -173,7 +225,7 @@ function parseExistingStructure(content) {
             comment = '';
         }
         if (name) {
-            items.push({ name, comment, level, lineIndex: i });
+            items.push({ name, comment, level });
         }
     }
     // 第二遍：构建结构，根据下一级是否有子项判断目录
@@ -222,14 +274,17 @@ function getLocalizedTitle(isProject = true) {
         return isProject ? '## Project Structure' : '## Directory Structure';
     }
 }
-// 生成项目结构
-async function generateProjectStructure(rootPath, workspaceRoot) {
+// 生成结构
+async function generateStructure(options) {
     const config = vscode.workspace.getConfiguration('projectStructure');
     const ignoredPatterns = config.get('ignoredPatterns') || [];
     const maxDepth = config.get('maxDepth') || 10;
-    const outputFileName = config.get('outputFileName') || 'README';
+    const useGitignore = config.get('useGitignore', true);
+    const excludeOutputFile = config.get('excludeOutputFile', true);
+    const outputFormat = getOutputFormat();
+    const extension = getOutputExtension(outputFormat);
+    const outputFilePath = path.join(options.outputPath, `${options.outputFileName}.${extension}`);
     // 读取现有的结构
-    const outputFilePath = path.join(workspaceRoot, `${outputFileName}.md`);
     let existingStructure = new Map();
     try {
         if (fs.existsSync(outputFilePath)) {
@@ -240,37 +295,32 @@ async function generateProjectStructure(rootPath, workspaceRoot) {
     catch (error) {
         console.log(`无法读取现有结构: ${error}`);
     }
-    const title = getLocalizedTitle(true);
-    let structureContent = `${title}\n\n\`\`\`\n`;
-    structureContent += await scanDirectory(rootPath, '', ignoredPatterns, 0, maxDepth, existingStructure, undefined);
-    structureContent += '```\n';
-    return structureContent;
-}
-// 生成目录结构
-async function generateDirectoryStructure(rootPath, outputPath, outputFileName) {
-    const config = vscode.workspace.getConfiguration('projectStructure');
-    const ignoredPatterns = config.get('ignoredPatterns') || [];
-    const maxDepth = config.get('maxDepth') || 10;
-    // 读取现有的结构
-    const outputFilePath = path.join(outputPath, `${outputFileName}.md`);
-    let existingStructure = new Map();
-    try {
-        if (fs.existsSync(outputFilePath)) {
-            const existingContent = fs.readFileSync(outputFilePath, 'utf8');
-            existingStructure = parseExistingStructure(existingContent);
-        }
-    }
-    catch (error) {
-        console.log(`无法读取现有结构: ${error}`);
-    }
-    const title = getLocalizedTitle(false);
-    let structureContent = `${title}\n\n\`\`\`\n`;
-    structureContent += await scanDirectory(rootPath, '', ignoredPatterns, 0, maxDepth, existingStructure, undefined);
-    structureContent += '```\n';
-    return structureContent;
+    const stats = {
+        directories: 0,
+        files: 0,
+        ignored: 0
+    };
+    const scanContext = {
+        ignoredPatterns,
+        gitignoreRules: useGitignore ? await readGitignoreRules(options.scanPath) : [],
+        workspaceRoot: options.scanPath,
+        outputFilePath,
+        excludeOutputFile,
+        stats,
+        nodes: []
+    };
+    const title = getLocalizedTitle(options.isProject);
+    const treeContent = await scanDirectory(options.scanPath, '', scanContext, 0, maxDepth, existingStructure, undefined);
+    const structureContent = formatStructureContent(outputFormat, title, treeContent, scanContext.nodes);
+    return {
+        content: structureContent,
+        extension,
+        format: outputFormat,
+        stats
+    };
 }
 // 递归扫描目录
-async function scanDirectory(dirPath, prefix, ignoredPatterns, currentDepth, maxDepth, existingStructure, currentStructureLevel) {
+async function scanDirectory(dirPath, prefix, context, currentDepth, maxDepth, existingStructure, currentStructureLevel) {
     if (currentDepth > maxDepth) {
         return '';
     }
@@ -278,35 +328,53 @@ async function scanDirectory(dirPath, prefix, ignoredPatterns, currentDepth, max
     const dirName = path.basename(dirPath);
     // 添加当前目录名称（根目录特殊处理）
     if (prefix === '') {
+        context.stats.directories++;
         const existingItem = existingStructure.get(dirName);
         const comment = (existingItem === null || existingItem === void 0 ? void 0 : existingItem.comment) || '';
+        context.nodes.push({
+            name: dirName,
+            path: dirPath,
+            relativePath: '',
+            level: 0,
+            comment,
+            isDirectory: true,
+            parentPath: ''
+        });
         result += `${dirName} # ${comment}\n`;
         currentStructureLevel = existingItem === null || existingItem === void 0 ? void 0 : existingItem.children;
     }
     try {
-        const files = fs.readdirSync(dirPath);
-        const sortedFiles = files.sort((a, b) => {
+        const sortedFiles = (await fs.promises.readdir(dirPath, { withFileTypes: true }))
+            .filter(file => {
+            const filePath = path.join(dirPath, file.name);
+            const ignored = shouldIgnore(file.name, filePath, file.isDirectory(), context);
+            if (ignored) {
+                context.stats.ignored++;
+            }
+            return !ignored;
+        })
+            .sort((a, b) => {
             // 目录优先排序
-            const aIsDir = fs.statSync(path.join(dirPath, a)).isDirectory();
-            const bIsDir = fs.statSync(path.join(dirPath, b)).isDirectory();
+            const aIsDir = a.isDirectory();
+            const bIsDir = b.isDirectory();
             if (aIsDir && !bIsDir)
                 return -1;
             if (!aIsDir && bIsDir)
                 return 1;
-            return a.localeCompare(b);
-        });
-        // 过滤掉应该忽略的文件
-        const filteredFiles = sortedFiles.filter(file => {
-            const filePath = path.join(dirPath, file);
-            return !shouldIgnore(file, filePath, ignoredPatterns);
+            return a.name.localeCompare(b.name);
         });
         // 处理子文件和目录
-        for (let i = 0; i < filteredFiles.length; i++) {
-            const file = filteredFiles[i];
-            const filePath = path.join(dirPath, file);
-            const isLast = i === filteredFiles.length - 1;
-            const stats = fs.statSync(filePath);
-            const isDirectory = stats.isDirectory();
+        for (let i = 0; i < sortedFiles.length; i++) {
+            const file = sortedFiles[i];
+            const filePath = path.join(dirPath, file.name);
+            const isLast = i === sortedFiles.length - 1;
+            const isDirectory = file.isDirectory();
+            if (isDirectory) {
+                context.stats.directories++;
+            }
+            else {
+                context.stats.files++;
+            }
             // 确定当前项的前缀
             const currentPrefix = isLast ? '└── ' : '├── ';
             // 确定子项的前缀
@@ -315,15 +383,25 @@ async function scanDirectory(dirPath, prefix, ignoredPatterns, currentDepth, max
             let existingComment = '';
             let childStructureLevel;
             if (currentStructureLevel) {
-                const existingItem = currentStructureLevel.get(file);
+                const existingItem = currentStructureLevel.get(file.name);
                 existingComment = (existingItem === null || existingItem === void 0 ? void 0 : existingItem.comment) || '';
                 childStructureLevel = existingItem === null || existingItem === void 0 ? void 0 : existingItem.children;
             }
             // 添加当前文件或目录
-            result += `${prefix}${currentPrefix}${file} # ${existingComment}\n`;
+            const relativePath = path.relative(context.workspaceRoot, filePath);
+            context.nodes.push({
+                name: file.name,
+                path: filePath,
+                relativePath,
+                level: currentDepth + 1,
+                comment: existingComment,
+                isDirectory,
+                parentPath: path.dirname(relativePath) === '.' ? '' : path.dirname(relativePath)
+            });
+            result += `${prefix}${currentPrefix}${file.name} # ${existingComment}\n`;
             // 如果是目录，递归处理
             if (isDirectory) {
-                result += await scanDirectory(filePath, prefix + childPrefix, ignoredPatterns, currentDepth + 1, maxDepth, existingStructure, childStructureLevel);
+                result += await scanDirectory(filePath, prefix + childPrefix, context, currentDepth + 1, maxDepth, existingStructure, childStructureLevel);
             }
         }
     }
@@ -332,26 +410,108 @@ async function scanDirectory(dirPath, prefix, ignoredPatterns, currentDepth, max
     }
     return result;
 }
-// 在结构中查找项目
-function findItemInStructure(structure, itemName) {
-    // 先在当前级别查找
-    const item = structure.get(itemName);
-    if (item) {
-        return item;
+function formatStructureContent(format, title, treeContent, nodes) {
+    if (format === 'mindmap') {
+        return formatMindmap(nodes);
     }
-    // 在子级别递归查找
-    for (const [, childItem] of structure) {
-        if (childItem.children) {
-            const found = findItemInStructure(childItem.children, itemName);
-            if (found) {
-                return found;
+    if (format === 'csv') {
+        return formatCsv(nodes);
+    }
+    return `${title}\n\n\`\`\`\n${treeContent}\`\`\`\n`;
+}
+function formatMindmap(nodes) {
+    const lines = ['mindmap'];
+    for (const node of nodes) {
+        const indent = '  '.repeat(node.level + 1);
+        const label = node.level === 0 ? `root((${escapeMindmapText(node.name)}))` : escapeMindmapText(getDisplayName(node));
+        lines.push(`${indent}${label}`);
+    }
+    return `${lines.join('\n')}\n`;
+}
+function formatCsv(nodes) {
+    const rows = [
+        ['Path', 'Name', 'Type', 'Level', 'Parent', 'Comment'],
+        ...nodes.map(node => [
+            node.relativePath || node.name,
+            node.name,
+            node.isDirectory ? 'directory' : 'file',
+            String(node.level),
+            node.parentPath,
+            node.comment
+        ])
+    ];
+    return `${rows.map(row => row.map(escapeCsvCell).join(',')).join('\n')}\n`;
+}
+function getDisplayName(node) {
+    return node.comment ? `${node.name} # ${node.comment}` : node.name;
+}
+function escapeMindmapText(value) {
+    return value.replace(/["'`()[\]{}]/g, '').trim() || 'unnamed';
+}
+function escapeCsvCell(value) {
+    const escapedValue = value.replace(/"/g, '""');
+    return /[",\n\r]/.test(escapedValue) ? `"${escapedValue}"` : escapedValue;
+}
+function getOutputFormat() {
+    const config = vscode.workspace.getConfiguration('projectStructure');
+    const format = config.get('outputFormat');
+    if (format === 'mindmap' || format === 'csv') {
+        return format;
+    }
+    return 'markdown';
+}
+function getOutputExtension(format) {
+    if (format === 'mindmap') {
+        return 'mmd';
+    }
+    if (format === 'csv') {
+        return 'csv';
+    }
+    return 'md';
+}
+async function readGitignoreRules(rootPath) {
+    const gitignorePath = path.join(rootPath, '.gitignore');
+    try {
+        const content = await fs.promises.readFile(gitignorePath, 'utf8');
+        return content
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('#'))
+            .map(line => {
+            const negated = line.startsWith('!');
+            let pattern = negated ? line.slice(1) : line;
+            const directoryOnly = pattern.endsWith('/');
+            const anchored = pattern.startsWith('/');
+            if (anchored) {
+                pattern = pattern.slice(1);
             }
-        }
+            if (directoryOnly) {
+                pattern = pattern.slice(0, -1);
+            }
+            return {
+                pattern,
+                negated,
+                directoryOnly,
+                anchored
+            };
+        })
+            .filter(rule => rule.pattern.length > 0);
     }
-    return undefined;
+    catch (_a) {
+        return [];
+    }
 }
 // 检查是否应该忽略文件或目录
-function shouldIgnore(fileName, filePath, ignoredPatterns) {
+function shouldIgnore(fileName, filePath, isDirectory, context) {
+    if (context.excludeOutputFile && context.outputFilePath && filePath === context.outputFilePath) {
+        return true;
+    }
+    if (matchesIgnoredPatterns(fileName, filePath, context.ignoredPatterns)) {
+        return true;
+    }
+    return matchesGitignore(filePath, isDirectory, context);
+}
+function matchesIgnoredPatterns(fileName, filePath, ignoredPatterns) {
     return ignoredPatterns.some(pattern => {
         // 跳过空字符串
         if (!pattern || pattern.trim() === '') {
@@ -373,44 +533,49 @@ function shouldIgnore(fileName, filePath, ignoredPatterns) {
         return pathParts.some(part => part === pattern);
     });
 }
-// 写入到指定文件
-async function writeToReadme(targetPath, content) {
-    // 从配置中获取输出文件名
-    const config = vscode.workspace.getConfiguration('projectStructure');
-    const outputFileName = config.get('outputFileName') || 'README';
-    const outputFilePath = path.join(targetPath, `${outputFileName}.md`);
-    let existingContent = '';
-    // 检查输出文件是否已存在
-    try {
-        if (fs.existsSync(outputFilePath)) {
-            existingContent = fs.readFileSync(outputFilePath, 'utf8');
+function matchesGitignore(filePath, isDirectory, context) {
+    if (context.gitignoreRules.length === 0) {
+        return false;
+    }
+    const relativePath = normalizePath(path.relative(context.workspaceRoot, filePath));
+    let ignored = false;
+    for (const rule of context.gitignoreRules) {
+        if (rule.directoryOnly && !isDirectory) {
+            continue;
+        }
+        if (matchesGitignoreRule(relativePath, filePath, rule)) {
+            ignored = !rule.negated;
         }
     }
-    catch (error) {
-        console.log(`${outputFileName}.md不存在，将创建新文件`);
-    }
-    // 如果已存在项目结构部分，则替换它 - 支持多种标题格式
-    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
-    if (structureRegex.test(existingContent)) {
-        existingContent = existingContent.replace(structureRegex, content);
-    }
-    else {
-        // 否则添加到文件末尾
-        existingContent = existingContent ?
-            (existingContent.trim() + '\n\n' + content) :
-            content;
-    }
-    // 写入文件
-    fs.writeFileSync(outputFilePath, existingContent);
-    // 在VS Code中打开生成的文件
-    vscode.workspace.openTextDocument(outputFilePath).then(doc => {
-        vscode.window.showTextDocument(doc);
-    });
+    return ignored;
 }
-// 写入到指定目录的文件
-async function writeToFile(targetPath, content, fileName) {
-    const outputFilePath = path.join(targetPath, `${fileName}.md`);
+function matchesGitignoreRule(relativePath, filePath, rule) {
+    const pattern = normalizePath(rule.pattern);
+    if (rule.anchored || pattern.includes('/')) {
+        return wildcardMatch(relativePath, pattern);
+    }
+    const pathParts = relativePath.split('/');
+    return pathParts.some(part => wildcardMatch(part, pattern)) || wildcardMatch(path.basename(filePath), pattern);
+}
+function wildcardMatch(value, pattern) {
+    const escapedPattern = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
+    return new RegExp(`^${escapedPattern}$`).test(value);
+}
+function normalizePath(value) {
+    return value.split(path.sep).join('/');
+}
+// 写入结构到指定目录的文件
+async function writeStructureFile(targetPath, content, fileName, extension, openAfterWrite) {
+    const outputFilePath = path.join(targetPath, `${fileName}.${extension}`);
     let existingContent = '';
+    if (extension !== 'md') {
+        await fs.promises.writeFile(outputFilePath, content);
+        if (openAfterWrite) {
+            const doc = await vscode.workspace.openTextDocument(outputFilePath);
+            await vscode.window.showTextDocument(doc);
+        }
+        return;
+    }
     // 检查输出文件是否已存在
     try {
         if (fs.existsSync(outputFilePath)) {
@@ -421,9 +586,8 @@ async function writeToFile(targetPath, content, fileName) {
         console.log(`${fileName}.md不存在，将创建新文件`);
     }
     // 如果已存在结构部分，则替换它 - 支持多种标题格式
-    const structureRegex = /(- 项目结构|### 目录结构|## 项目结构|## 目录结构|## Project Structure|## Directory Structure)\s*\n\s*```[\s\S]*?```\s*(\n|$)/;
-    if (structureRegex.test(existingContent)) {
-        existingContent = existingContent.replace(structureRegex, content);
+    if (structureSectionRegex.test(existingContent)) {
+        existingContent = existingContent.replace(structureSectionRegex, content);
     }
     else {
         // 否则添加到文件末尾
@@ -432,11 +596,12 @@ async function writeToFile(targetPath, content, fileName) {
             content;
     }
     // 写入文件
-    fs.writeFileSync(outputFilePath, existingContent);
-    // 在VS Code中打开生成的文件
-    vscode.workspace.openTextDocument(outputFilePath).then(doc => {
-        vscode.window.showTextDocument(doc);
-    });
+    await fs.promises.writeFile(outputFilePath, existingContent);
+    if (openAfterWrite) {
+        // 在VS Code中打开生成的文件
+        const doc = await vscode.workspace.openTextDocument(outputFilePath);
+        await vscode.window.showTextDocument(doc);
+    }
 }
 // 设置文件系统监听器
 function setupFileWatcher(context) {
@@ -458,8 +623,8 @@ function setupFileWatcher(context) {
 // 处理文件系统变化
 async function handleFileSystemChange(changeType, files) {
     const config = vscode.workspace.getConfiguration('projectStructure');
-    const autoUpdate = config.get('autoUpdate');
-    if (!autoUpdate) {
+    const autoUpdate = config.get('autoUpdate', false);
+    if (!autoUpdate || isGenerating) {
         return;
     }
     // 获取工作区根目录
@@ -468,25 +633,59 @@ async function handleFileSystemChange(changeType, files) {
         return;
     }
     const rootPath = workspaceFolders[0].uri.fsPath;
+    const outputFileName = config.get('outputFileName') || 'README';
+    const outputExtension = getOutputExtension(getOutputFormat());
+    const outputFilePath = path.join(rootPath, `${outputFileName}.${outputExtension}`);
     // 检查变化的文件是否在工作区内
-    const isInWorkspace = files.some(file => file.fsPath.startsWith(rootPath));
-    if (!isInWorkspace) {
+    const changedFiles = files.filter(file => isPathInside(rootPath, file.fsPath) && file.fsPath !== outputFilePath);
+    if (changedFiles.length === 0) {
         return;
     }
-    try {
-        // 自动更新项目结构
-        const structure = await generateProjectStructure(rootPath, rootPath);
-        await writeToReadme(rootPath, structure);
-        // 显示更新通知
-        vscode.window.showInformationMessage(`项目结构已自动更新（${changeType}了 ${files.length} 个文件）`);
+    if (autoUpdateTimer) {
+        clearTimeout(autoUpdateTimer);
     }
-    catch (error) {
-        console.error('自动更新项目结构失败:', error);
-        vscode.window.showWarningMessage('自动更新项目结构失败，请手动更新');
+    autoUpdateTimer = setTimeout(async () => {
+        isGenerating = true;
+        try {
+            // 自动更新项目结构
+            const result = await generateStructure({
+                scanPath: rootPath,
+                outputPath: rootPath,
+                outputFileName,
+                isProject: true
+            });
+            await writeStructureFile(rootPath, result.content, outputFileName, result.extension, false);
+            // 显示更新通知
+            vscode.window.showInformationMessage(getGeneratedMessage(`项目结构已自动更新（${changeType}了 ${changedFiles.length} 个文件）`, result.stats));
+        }
+        catch (error) {
+            console.error('自动更新项目结构失败:', error);
+            vscode.window.showWarningMessage('自动更新项目结构失败，请手动更新');
+        }
+        finally {
+            isGenerating = false;
+            autoUpdateTimer = undefined;
+        }
+    }, autoUpdateDelayMs);
+}
+function isPathInside(parentPath, childPath) {
+    const relativePath = path.relative(parentPath, childPath);
+    return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+}
+function getGeneratedMessage(baseMessage, stats) {
+    const config = vscode.workspace.getConfiguration('projectStructure');
+    const showStats = config.get('showStats', true);
+    if (!showStats) {
+        return baseMessage;
     }
+    return `${baseMessage}（目录 ${stats.directories}，文件 ${stats.files}，忽略 ${stats.ignored}）`;
 }
 // 插件停用时调用
 function deactivate() {
+    if (autoUpdateTimer) {
+        clearTimeout(autoUpdateTimer);
+        autoUpdateTimer = undefined;
+    }
     console.log('项目结构生成器插件已停用');
 }
 //# sourceMappingURL=extension.js.map

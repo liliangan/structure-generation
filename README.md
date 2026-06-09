@@ -9,13 +9,17 @@ A VS Code extension that scans project files and generates a structured director
 - **Two Generation Modes**: Project-wide structure or directory-specific structure
 - **Smart File Comments**: Preserves and displays comments marked with `#` after file names
 - **Auto-Update**: Optional automatic regeneration when files/folders are created, deleted, or renamed
+- **Clipboard Export**: Copy project or directory structure without writing a file
+- **Multiple Output Formats**: Generate Markdown, Mermaid mindmap (`.mmd`), or CSV files
+- **.gitignore Support**: Optionally applies `.gitignore` rules while scanning
+- **Generation Stats**: Shows directory, file, and ignored item counts after generation
 - **Flexible Configuration**: Customizable ignore patterns, scan depth, and output file names
 - **Multi-language Support**: English and Chinese interfaces
 - **Intelligent Filtering**: Default ignores common directories like `.git`, `.idea`, `.vscode`, `dist`, `node_modules`
 
 ## 🚀 Usage
 
-### Two Generation Commands
+### Available Commands
 
 #### 1. Generate Project Structure
 - **What it does**: Scans the entire project from root directory
@@ -33,21 +37,28 @@ A VS Code extension that scans project files and generates a structured director
 - **Access**:
   - Right-click on folders: "Generate Directory Structure"
 
+#### 3. Copy Project Structure to Clipboard
+- **What it does**: Generates the structure and copies it to the clipboard without writing a file
+- **When to use**: For pasting into chats, issues, prompts, or documents
+- **Access**:
+  - Command Palette: "Copy Project Structure to Clipboard"
+  - Right-click on files/folders: "Copy Project Structure to Clipboard"
+
 ### How to Access Commands
 
 #### Command Palette
 1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS)
 2. Type "Generate Project Structure" and select the command
 
-**Note**: Command Palette only provides "Generate Project Structure" option.
+**Note**: The Command Palette provides project-wide generation, clipboard export, and configuration commands.
 
 #### Right-Click Context Menu
-- **On Files**: Shows only "Generate Project Structure"
-- **On Folders**: Shows both "Generate Project Structure" and "Generate Directory Structure"
+- **On Files**: Shows "Generate Project Structure" and "Copy Project Structure to Clipboard"
+- **On Folders**: Shows "Generate Project Structure", "Generate Directory Structure", and "Copy Project Structure to Clipboard"
 
 **Key Difference**: 
-- **Command Palette**: Only generates project structure
-- **Right-click Folders**: Can choose between project structure or directory structure
+- **Command Palette**: Best for project-wide generation and clipboard export
+- **Right-click Folders**: Can choose between project structure, directory structure, or clipboard export
 
 ## ⚙️ Configuration Options
 
@@ -59,9 +70,19 @@ Access settings by searching for "projectStructure" in VS Code settings or use t
 |---------|------|---------|-------------|
 | `projectStructure.outputFileName` | string | "README" | Output file name for project structure |
 | `projectStructure.directoryOutputFileName` | string | "README" | Output file name for directory structure |
+| `projectStructure.outputFormat` | string | "markdown" | Output format: `markdown`, `mindmap`, or `csv` |
 | `projectStructure.ignoredPatterns` | array | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | Files/directories to ignore |
 | `projectStructure.maxDepth` | number | 10 | Maximum directory depth to scan |
 | `projectStructure.autoUpdate` | boolean | false | Auto-update when files change |
+| `projectStructure.useGitignore` | boolean | true | Apply `.gitignore` rules while scanning |
+| `projectStructure.excludeOutputFile` | boolean | true | Exclude the output Markdown file itself from generated structure |
+| `projectStructure.showStats` | boolean | true | Show directory/file/ignored counts after generation |
+
+### Output Formats
+
+- `markdown`: Updates or creates a `.md` file and preserves comments in the existing structure block.
+- `mindmap`: Creates a Mermaid mindmap `.mmd` file for visualizing the project structure.
+- `csv`: Creates a `.csv` file with path, name, type, level, parent, and comment columns.
 
 ### 🔄 Auto-Update Feature
 
@@ -137,13 +158,17 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 - **双生成模式**：项目整体结构或目录特定结构
 - **智能文件注释**：保留并显示文件名后用 `#` 标记的注释
 - **自动更新**：可选的文件/文件夹创建、删除或重命名时自动重新生成
+- **剪贴板导出**：无需写入文件，直接复制项目或目录结构
+- **多输出格式**：支持生成 Markdown、Mermaid 思维导图（`.mmd`）或 CSV 文件
+- **.gitignore 支持**：扫描时可自动应用 `.gitignore` 规则
+- **生成统计**：生成后显示目录数、文件数和忽略项数量
 - **灵活配置**：可自定义忽略模式、扫描深度和输出文件名
 - **多语言支持**：中英文界面
 - **智能过滤**：默认忽略常见目录如 `.git`、`.idea`、`.vscode`、`dist`、`node_modules`
 
 ## 🚀 使用方法
 
-### 两个生成命令
+### 可用命令
 
 #### 1. 生成项目结构
 - **功能**：从根目录扫描整个项目
@@ -161,21 +186,28 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 - **访问方式**：
   - 文件夹右键："生成目录结构"
 
+#### 3. 复制项目结构到剪贴板
+- **功能**：生成结构并复制到剪贴板，不写入文件
+- **使用场景**：粘贴到聊天、Issue、提示词或文档
+- **访问方式**：
+  - 命令面板："复制项目结构到剪贴板"
+  - 文件/文件夹右键："复制项目结构到剪贴板"
+
 ### 命令访问方式
 
 #### 命令面板
 1. 按 `Ctrl+Shift+P` (Windows/Linux) 或 `Cmd+Shift+P` (macOS)
 2. 输入"生成项目结构"并选择命令
 
-**注意**：命令面板仅提供"生成项目结构"选项。
+**注意**：命令面板提供项目整体生成、剪贴板导出和配置命令。
 
 #### 右键菜单
-- **文件右键**：仅显示"生成项目结构"
-- **文件夹右键**：显示"生成项目结构"和"生成目录结构"
+- **文件右键**：显示"生成项目结构"和"复制项目结构到剪贴板"
+- **文件夹右键**：显示"生成项目结构"、"生成目录结构"和"复制项目结构到剪贴板"
 
 **重要区别**：
-- **命令面板**：只能生成项目结构
-- **右键文件夹**：可选择生成项目结构或目录结构
+- **命令面板**：适合生成项目整体结构和复制到剪贴板
+- **右键文件夹**：可选择生成项目结构、目录结构或复制到剪贴板
 
 ## ⚙️ 配置选项
 
@@ -187,9 +219,19 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 |--------|------|--------|------|
 | `projectStructure.outputFileName` | 字符串 | "README" | 项目结构输出文件名 |
 | `projectStructure.directoryOutputFileName` | 字符串 | "README" | 目录结构输出文件名 |
+| `projectStructure.outputFormat` | 字符串 | "markdown" | 输出格式：`markdown`、`mindmap` 或 `csv` |
 | `projectStructure.ignoredPatterns` | 数组 | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | 要忽略的文件/目录 |
 | `projectStructure.maxDepth` | 数字 | 10 | 扫描的最大目录深度 |
 | `projectStructure.autoUpdate` | 布尔值 | false | 文件变化时自动更新 |
+| `projectStructure.useGitignore` | 布尔值 | true | 扫描时应用 `.gitignore` 规则 |
+| `projectStructure.excludeOutputFile` | 布尔值 | true | 从生成的结构中排除输出 Markdown 文件本身 |
+| `projectStructure.showStats` | 布尔值 | true | 生成后显示目录/文件/忽略项数量 |
+
+### 输出格式
+
+- `markdown`：更新或创建 `.md` 文件，并保留已有结构块里的注释。
+- `mindmap`：创建 Mermaid 思维导图 `.mmd` 文件，用于可视化项目结构。
+- `csv`：创建 `.csv` 文件，包含路径、名称、类型、层级、父目录和注释列。
 
 ### 🔄 自动更新功能
 

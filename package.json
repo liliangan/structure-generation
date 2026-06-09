@@ -18,7 +18,12 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:project-structure.generate",
+    "onCommand:project-structure.generateDirectory",
+    "onCommand:project-structure.copy",
+    "onCommand:project-structure.configure"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -29,6 +34,10 @@
       {
         "command": "project-structure.generateDirectory",
         "title": "%project-structure.generateDirectory%"
+      },
+      {
+        "command": "project-structure.copy",
+        "title": "%project-structure.copy%"
       },
       {
         "command": "project-structure.configure",
@@ -46,11 +55,20 @@
           "when": "explorerResourceIsFolder",
           "command": "project-structure.generateDirectory",
           "group": "navigation@2"
+        },
+        {
+          "when": "resourceScheme == file",
+          "command": "project-structure.copy",
+          "group": "navigation@3"
         }
       ],
       "editor/context": [
         {
           "command": "project-structure.generate",
+          "group": "navigation"
+        },
+        {
+          "command": "project-structure.copy",
           "group": "navigation"
         }
       ]
@@ -67,6 +85,16 @@
           "type": "string",
           "default": "README",
           "description": "%configuration.directoryOutputFileName.description%"
+        },
+        "projectStructure.outputFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "mindmap",
+            "csv"
+          ],
+          "default": "markdown",
+          "description": "%configuration.outputFormat.description%"
         },
         "projectStructure.ignoredPatterns": {
           "type": "array",
@@ -88,6 +116,21 @@
           "type": "boolean",
           "default": false,
           "description": "%configuration.autoUpdate.description%"
+        },
+        "projectStructure.useGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.useGitignore.description%"
+        },
+        "projectStructure.excludeOutputFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.excludeOutputFile.description%"
+        },
+        "projectStructure.showStats": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.showStats.description%"
         }
       }
     }
@@ -96,8 +139,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile",
-    "test": "node ./out/test/runTest.js"
+    "test": "npm run compile"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

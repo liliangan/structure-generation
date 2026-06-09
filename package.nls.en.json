@@ -1,11 +1,16 @@
 {
   "project-structure.generate": "Generate Project Structure",
   "project-structure.generateDirectory": "Generate Directory Structure",
+  "project-structure.copy": "Copy Project Structure to Clipboard",
   "project-structure.configure": "Configure Project Structure Generator",
   "configuration.title": "Project Structure Generator",
   "configuration.ignoredPatterns.description": "Patterns of files or directories to ignore",
   "configuration.maxDepth.description": "Maximum directory depth to scan",
-  "configuration.outputFileName.description": "Output file name for project structure (without extension, .md will be added automatically)",
-  "configuration.directoryOutputFileName.description": "Output file name for directory structure (without extension, .md will be added automatically)",
-  "configuration.autoUpdate.description": "Automatically update project structure when files or folders change"
+  "configuration.outputFileName.description": "Output file name for project structure (without extension, extension will be added based on output format)",
+  "configuration.directoryOutputFileName.description": "Output file name for directory structure (without extension, extension will be added based on output format)",
+  "configuration.outputFormat.description": "Output format: Markdown, Mermaid mindmap, or CSV",
+  "configuration.autoUpdate.description": "Automatically update project structure when files or folders change",
+  "configuration.useGitignore.description": "Apply .gitignore rules while scanning",
+  "configuration.excludeOutputFile.description": "Exclude the output file itself from generated structure",
+  "configuration.showStats.description": "Show directory, file, and ignored item counts after generation"
 }

@@ -1,11 +1,16 @@
 {
   "project-structure.generate": "生成项目结构",
   "project-structure.generateDirectory": "生成目录结构",
+  "project-structure.copy": "复制项目结构到剪贴板",
   "project-structure.configure": "配置项目结构生成器",
   "configuration.title": "项目结构生成器",
   "configuration.ignoredPatterns.description": "要忽略的文件或目录模式",
   "configuration.maxDepth.description": "扫描的最大目录深度",
-  "configuration.outputFileName.description": "生成项目结构的文件名称（不含扩展名，将自动添加.md）",
-  "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将自动添加.md）",
-  "configuration.autoUpdate.description": "当文件或文件夹发生变化时自动更新项目结构"
+  "configuration.outputFileName.description": "生成项目结构的文件名称（不含扩展名，将按输出格式自动添加扩展名）",
+  "configuration.directoryOutputFileName.description": "生成目录结构的文件名称（不含扩展名，将按输出格式自动添加扩展名）",
+  "configuration.outputFormat.description": "输出格式：Markdown、Mermaid 思维导图或 CSV",
+  "configuration.autoUpdate.description": "当文件或文件夹发生变化时自动更新项目结构",
+  "configuration.useGitignore.description": "扫描时应用 .gitignore 规则",
+  "configuration.excludeOutputFile.description": "从生成的结构中排除输出文件本身",
+  "configuration.showStats.description": "生成后显示目录、文件和忽略项统计"
 }
