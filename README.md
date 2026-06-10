@@ -84,8 +84,8 @@ Access settings by searching for "projectStructure" in VS Code settings or use t
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `projectStructure.outputFileName` | string | "README" | Output file name for project structure, without extension |
-| `projectStructure.directoryOutputFileName` | string | "README" | Output file name for directory structure, without extension |
+| `projectStructure.outputFileName` | string | "PROJECT_STRUCTURE" | Output file name for project structure, without extension |
+| `projectStructure.directoryOutputFileName` | string | "PROJECT_STRUCTURE" | Output file name for directory structure, without extension |
 | `projectStructure.outputFormat` | string | "markdown" | Output format: `markdown`, `mindmap`, `csv`, or `html` |
 | `projectStructure.ignoredPatterns` | array | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | Files/directories to ignore |
 | `projectStructure.maxDepth` | number | 10 | Maximum directory depth to scan |
@@ -171,7 +171,7 @@ my-project #
 │   ├── index.html # HTML template
 │   └── favicon.ico # Site icon
 ├── package.json # Project dependencies
-└── README.md # Project documentation
+└── PROJECT_STRUCTURE.md # Project structure output
 ```
 
 ## 📝 Changelog
@@ -179,6 +179,7 @@ my-project #
 ### v1.1.0
 - ✅ Added clipboard export for project and directory structures without writing files
 - ✅ Added configurable output formats: Markdown, Mermaid mindmap, CSV, and HTML
+- ✅ Changed the default project and directory output file name to `PROJECT_STRUCTURE`
 - ✅ Added "Convert Selected Structure To..." command for converting selected tree text into HTML, CSV, or Mermaid mindmap files
 - ✅ Added standalone HTML output with search, expand/collapse controls, and summary stats
 - ✅ Conversion output is saved next to the source document as `<root-name>-structure.html`, `.csv`, or `.mmd`
@@ -289,8 +290,8 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 
 | 设置项 | 类型 | 默认值 | 描述 |
 |--------|------|--------|------|
-| `projectStructure.outputFileName` | 字符串 | "README" | 项目结构输出文件名，不含扩展名 |
-| `projectStructure.directoryOutputFileName` | 字符串 | "README" | 目录结构输出文件名，不含扩展名 |
+| `projectStructure.outputFileName` | 字符串 | "PROJECT_STRUCTURE" | 项目结构输出文件名，不含扩展名 |
+| `projectStructure.directoryOutputFileName` | 字符串 | "PROJECT_STRUCTURE" | 目录结构输出文件名，不含扩展名 |
 | `projectStructure.outputFormat` | 字符串 | "markdown" | 输出格式：`markdown`、`mindmap`、`csv` 或 `html` |
 | `projectStructure.ignoredPatterns` | 数组 | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | 要忽略的文件/目录 |
 | `projectStructure.maxDepth` | 数字 | 10 | 扫描的最大目录深度 |
@@ -376,7 +377,7 @@ my-project #
 │   ├── index.html # HTML 模板
 │   └── favicon.ico # 网站图标
 ├── package.json # 项目依赖
-└── README.md # 项目文档
+└── PROJECT_STRUCTURE.md # 项目结构输出
 ```
 
 ## 📝 更新日志
@@ -384,6 +385,7 @@ my-project #
 ### v1.1.0
 - ✅ 新增剪贴板导出，可复制项目结构或目录结构且不写入文件
 - ✅ 新增可配置输出格式：Markdown、Mermaid 思维导图、CSV 和 HTML
+- ✅ 将项目结构和目录结构的默认输出文件名改为 `PROJECT_STRUCTURE`
 - ✅ 新增"将选中结构转换为..."命令，可将选中的树形结构转换为 HTML、CSV 或 Mermaid 思维导图文件
 - ✅ 新增独立 HTML 输出，支持搜索、展开/折叠和统计信息
 - ✅ 转换结果会保存到源文档所在目录，文件名为 `<根节点名称>-structure.html`、`.csv` 或 `.mmd`

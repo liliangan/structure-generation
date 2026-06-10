@@ -47,10 +47,10 @@ function activate(context) {
     console.log('项目结构生成器插件已激活');
     // 注册生成项目结构命令
     let generateCommand = vscode.commands.registerCommand('project-structure.generate', async (resource) => {
-        // 确定要扫描的目录路径和生成README的目录路径
+        // 确定要扫描的目录路径和生成结构文件的目录路径
         let scanPath;
         let rootPath;
-        // 获取工作区根目录（用于生成README.md）
+        // 获取工作区根目录（用于生成结构文件）
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             vscode.window.showErrorMessage('请先打开一个项目文件夹');
@@ -62,7 +62,7 @@ function activate(context) {
         try {
             // 从配置中获取输出文件名
             const config = vscode.workspace.getConfiguration('projectStructure');
-            const outputFileName = config.get('outputFileName') || 'README';
+            const outputFileName = config.get('outputFileName') || 'PROJECT_STRUCTURE';
             const result = await generateStructure({
                 scanPath,
                 outputPath: rootPath,
@@ -78,7 +78,7 @@ function activate(context) {
     });
     // 注册生成目录结构命令
     let generateDirectoryCommand = vscode.commands.registerCommand('project-structure.generateDirectory', async (resource) => {
-        // 确定要扫描的目录路径和生成README的目录路径
+        // 确定要扫描的目录路径和生成结构文件的目录路径
         let scanPath;
         let outputPath;
         // 如果是从右键菜单调用并且有资源
@@ -101,7 +101,7 @@ function activate(context) {
         try {
             // 从配置中获取目录输出文件名
             const config = vscode.workspace.getConfiguration('projectStructure');
-            const outputFileName = config.get('directoryOutputFileName') || 'README';
+            const outputFileName = config.get('directoryOutputFileName') || 'PROJECT_STRUCTURE';
             const result = await generateStructure({
                 scanPath,
                 outputPath,
@@ -126,7 +126,7 @@ function activate(context) {
             const stats = await fs.promises.stat(resource.fsPath);
             scanPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
             outputPath = scanPath;
-            outputFileName = config.get('directoryOutputFileName') || 'README';
+            outputFileName = config.get('directoryOutputFileName') || 'PROJECT_STRUCTURE';
             isProject = false;
         }
         else {
@@ -137,7 +137,7 @@ function activate(context) {
             }
             scanPath = workspaceFolders[0].uri.fsPath;
             outputPath = scanPath;
-            outputFileName = config.get('outputFileName') || 'README';
+            outputFileName = config.get('outputFileName') || 'PROJECT_STRUCTURE';
             isProject = true;
         }
         try {
@@ -1114,7 +1114,7 @@ async function handleFileSystemChange(changeType, files) {
         return;
     }
     const rootPath = workspaceFolders[0].uri.fsPath;
-    const outputFileName = config.get('outputFileName') || 'README';
+    const outputFileName = config.get('outputFileName') || 'PROJECT_STRUCTURE';
     const outputExtension = getOutputExtension(getOutputFormat());
     const outputFilePath = path.join(rootPath, `${outputFileName}.${outputExtension}`);
     // 检查变化的文件是否在工作区内

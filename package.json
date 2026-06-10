@@ -88,12 +88,12 @@
       "properties": {
         "projectStructure.outputFileName": {
           "type": "string",
-          "default": "README",
+          "default": "PROJECT_STRUCTURE",
           "description": "%configuration.outputFileName.description%"
         },
         "projectStructure.directoryOutputFileName": {
           "type": "string",
-          "default": "README",
+          "default": "PROJECT_STRUCTURE",
           "description": "%configuration.directoryOutputFileName.description%"
         },
         "projectStructure.outputFormat": {

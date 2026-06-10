@@ -74,11 +74,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 注册生成项目结构命令
     let generateCommand = vscode.commands.registerCommand('project-structure.generate', async (resource: vscode.Uri | undefined) => {
-        // 确定要扫描的目录路径和生成README的目录路径
+        // 确定要扫描的目录路径和生成结构文件的目录路径
         let scanPath: string;
         let rootPath: string;
         
-        // 获取工作区根目录（用于生成README.md）
+        // 获取工作区根目录（用于生成结构文件）
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             vscode.window.showErrorMessage('请先打开一个项目文件夹');
@@ -92,7 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             // 从配置中获取输出文件名
             const config = vscode.workspace.getConfiguration('projectStructure');
-            const outputFileName = (config.get('outputFileName') as string) || 'README';
+            const outputFileName = (config.get('outputFileName') as string) || 'PROJECT_STRUCTURE';
             
             const result = await generateStructure({
                 scanPath,
@@ -109,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 注册生成目录结构命令
     let generateDirectoryCommand = vscode.commands.registerCommand('project-structure.generateDirectory', async (resource: vscode.Uri | undefined) => {
-        // 确定要扫描的目录路径和生成README的目录路径
+        // 确定要扫描的目录路径和生成结构文件的目录路径
         let scanPath: string;
         let outputPath: string;
         
@@ -133,7 +133,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             // 从配置中获取目录输出文件名
             const config = vscode.workspace.getConfiguration('projectStructure');
-            const outputFileName = (config.get('directoryOutputFileName') as string) || 'README';
+            const outputFileName = (config.get('directoryOutputFileName') as string) || 'PROJECT_STRUCTURE';
             
             const result = await generateStructure({
                 scanPath,
@@ -160,7 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
             const stats = await fs.promises.stat(resource.fsPath);
             scanPath = stats.isDirectory() ? resource.fsPath : path.dirname(resource.fsPath);
             outputPath = scanPath;
-            outputFileName = (config.get('directoryOutputFileName') as string) || 'README';
+            outputFileName = (config.get('directoryOutputFileName') as string) || 'PROJECT_STRUCTURE';
             isProject = false;
         } else {
             const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -170,7 +170,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
             scanPath = workspaceFolders[0].uri.fsPath;
             outputPath = scanPath;
-            outputFileName = (config.get('outputFileName') as string) || 'README';
+            outputFileName = (config.get('outputFileName') as string) || 'PROJECT_STRUCTURE';
             isProject = true;
         }
 
@@ -1283,7 +1283,7 @@ async function handleFileSystemChange(changeType: string, files: readonly vscode
     }
     
     const rootPath = workspaceFolders[0].uri.fsPath;
-    const outputFileName = (config.get('outputFileName') as string) || 'README';
+    const outputFileName = (config.get('outputFileName') as string) || 'PROJECT_STRUCTURE';
     const outputExtension = getOutputExtension(getOutputFormat());
     const outputFilePath = path.join(rootPath, `${outputFileName}.${outputExtension}`);
     
