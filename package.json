@@ -120,7 +120,7 @@
         },
         "projectStructure.maxDepth": {
           "type": "number",
-          "default": 10,
+          "default": 0,
           "description": "%configuration.maxDepth.description%"
         },
         "projectStructure.autoUpdate": {

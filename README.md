@@ -88,7 +88,7 @@ Access settings by searching for `projectStructure`, `Project Structure Generato
 | `projectStructure.directoryOutputFileName` | string | "PROJECT_STRUCTURE" | Output file name for directory structure, without extension |
 | `projectStructure.outputFormat` | string | "markdown" | Output format: `markdown`, `mindmap`, `csv`, or `html` |
 | `projectStructure.ignoredPatterns` | array | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | Files/directories to ignore |
-| `projectStructure.maxDepth` | number | 10 | Maximum directory depth to scan |
+| `projectStructure.maxDepth` | number | 0 | Maximum directory depth to scan; `0` means unlimited |
 | `projectStructure.autoUpdate` | boolean | false | Auto-update when files change |
 | `projectStructure.useGitignore` | boolean | true | Apply `.gitignore` rules while scanning |
 | `projectStructure.excludeOutputFile` | boolean | true | Exclude the generated output file itself from the structure |
@@ -106,6 +106,7 @@ Output file extensions are added automatically based on the selected format: `.m
 ### Scanning Behavior
 
 - Existing comments after `#` are parsed from the current Markdown structure and kept during regeneration.
+- The default scan depth is unlimited. Set `projectStructure.maxDepth` to a positive number only when you want to limit recursion.
 - Directory entries are listed before files, then sorted by name.
 - Ignore patterns support exact file or directory names and simple wildcards such as `*.log`.
 - When `projectStructure.useGitignore` is enabled, `.gitignore` rules are applied in addition to `projectStructure.ignoredPatterns`.
@@ -181,6 +182,7 @@ my-project #
 - ✅ Added configurable output formats: Markdown, Mermaid mindmap, CSV, and HTML
 - ✅ Changed the default project and directory output file name to `PROJECT_STRUCTURE`
 - ✅ Improved VS Code settings search by adding Project Structure Generator keywords to setting titles and descriptions
+- ✅ Changed the default scan depth to unlimited; `projectStructure.maxDepth` now limits recursion only when set to a positive number
 - ✅ Added "Convert Selected Structure To..." command for converting selected tree text into HTML, CSV, or Mermaid mindmap files
 - ✅ Added standalone HTML output with search, expand/collapse controls, and summary stats
 - ✅ Conversion output is saved next to the source document as `<root-name>-structure.html`, `.csv`, or `.mmd`
@@ -295,7 +297,7 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 | `projectStructure.directoryOutputFileName` | 字符串 | "PROJECT_STRUCTURE" | 目录结构输出文件名，不含扩展名 |
 | `projectStructure.outputFormat` | 字符串 | "markdown" | 输出格式：`markdown`、`mindmap`、`csv` 或 `html` |
 | `projectStructure.ignoredPatterns` | 数组 | `[".git", ".idea", ".vscode", "dist", "node_modules"]` | 要忽略的文件/目录 |
-| `projectStructure.maxDepth` | 数字 | 10 | 扫描的最大目录深度 |
+| `projectStructure.maxDepth` | 数字 | 0 | 扫描的最大目录深度；`0` 表示不限制 |
 | `projectStructure.autoUpdate` | 布尔值 | false | 文件变化时自动更新 |
 | `projectStructure.useGitignore` | 布尔值 | true | 扫描时应用 `.gitignore` 规则 |
 | `projectStructure.excludeOutputFile` | 布尔值 | true | 从生成的结构中排除输出文件本身 |
@@ -313,6 +315,7 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 ### 扫描行为
 
 - 会从当前 Markdown 结构中解析 `#` 后的已有注释，并在重新生成时保留。
+- 默认不限制扫描深度，会递归到底；只有把 `projectStructure.maxDepth` 设置为正数时才会限制层级。
 - 目录会排在文件之前，同类型项目按名称排序。
 - 忽略模式支持精确文件名、目录名和 `*.log` 这类简单通配符。
 - 启用 `projectStructure.useGitignore` 后，会在 `projectStructure.ignoredPatterns` 之外继续应用 `.gitignore` 规则。
@@ -388,6 +391,7 @@ my-project #
 - ✅ 新增可配置输出格式：Markdown、Mermaid 思维导图、CSV 和 HTML
 - ✅ 将项目结构和目录结构的默认输出文件名改为 `PROJECT_STRUCTURE`
 - ✅ 增强 VS Code 设置搜索，在设置标题和描述中加入 Project Structure Generator / 项目结构生成器关键词
+- ✅ 将默认扫描深度改为不限制；`projectStructure.maxDepth` 只有设置为正数时才限制递归层级
 - ✅ 新增"将选中结构转换为..."命令，可将选中的树形结构转换为 HTML、CSV 或 Mermaid 思维导图文件
 - ✅ 新增独立 HTML 输出，支持搜索、展开/折叠和统计信息
 - ✅ 转换结果会保存到源文档所在目录，文件名为 `<根节点名称>-structure.html`、`.csv` 或 `.mmd`

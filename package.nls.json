@@ -6,7 +6,7 @@
   "project-structure.configure": "配置项目结构生成器 | Configure Project Structure Generator",
   "configuration.title": "项目结构生成器设置 | Project Structure Generator Settings",
   "configuration.ignoredPatterns.description": "项目结构生成器：要忽略的文件或目录模式 | Project Structure Generator: Patterns of files or directories to ignore",
-  "configuration.maxDepth.description": "项目结构生成器：扫描的最大目录深度 | Project Structure Generator: Maximum directory depth to scan",
+  "configuration.maxDepth.description": "项目结构生成器：扫描的最大目录深度，0 表示不限制 | Project Structure Generator: Maximum directory depth to scan, 0 means unlimited",
   "configuration.outputFileName.description": "项目结构生成器：生成项目结构的文件名称（不含扩展名，将按输出格式自动添加扩展名） | Project Structure Generator: Output file name for project structure (without extension, extension will be added based on output format)",
   "configuration.directoryOutputFileName.description": "项目结构生成器：生成目录结构的文件名称（不含扩展名，将按输出格式自动添加扩展名） | Project Structure Generator: Output file name for directory structure (without extension, extension will be added based on output format)",
   "configuration.outputFormat.description": "项目结构生成器：输出格式：Markdown、Mermaid 思维导图、CSV 或 HTML 可视化页面 | Project Structure Generator: Output format: Markdown, Mermaid mindmap, CSV, or HTML visualization page",

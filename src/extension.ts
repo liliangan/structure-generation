@@ -381,7 +381,8 @@ function getLocalizedTitle(isProject: boolean = true): string {
 async function generateStructure(options: GenerateOptions): Promise<GenerateResult> {
     const config = vscode.workspace.getConfiguration('projectStructure');
     const ignoredPatterns: string[] = config.get('ignoredPatterns') || [];
-    const maxDepth: number = config.get('maxDepth') || 10;
+    const configuredMaxDepth = config.get<number>('maxDepth', 0);
+    const maxDepth = configuredMaxDepth > 0 ? configuredMaxDepth : Number.POSITIVE_INFINITY;
     const useGitignore = config.get<boolean>('useGitignore', true);
     const excludeOutputFile = config.get<boolean>('excludeOutputFile', true);
     const outputFormat = getOutputFormat();

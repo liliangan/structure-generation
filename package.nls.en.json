@@ -6,7 +6,7 @@
   "project-structure.configure": "Configure Project Structure Generator",
   "configuration.title": "Project Structure Generator Settings",
   "configuration.ignoredPatterns.description": "Project Structure Generator: Patterns of files or directories to ignore",
-  "configuration.maxDepth.description": "Project Structure Generator: Maximum directory depth to scan",
+  "configuration.maxDepth.description": "Project Structure Generator: Maximum directory depth to scan, 0 means unlimited",
   "configuration.outputFileName.description": "Project Structure Generator: Output file name for project structure (without extension, extension will be added based on output format)",
   "configuration.directoryOutputFileName.description": "Project Structure Generator: Output file name for directory structure (without extension, extension will be added based on output format)",
   "configuration.outputFormat.description": "Project Structure Generator: Output format: Markdown, Mermaid mindmap, CSV, or HTML visualization page",
