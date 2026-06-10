@@ -78,7 +78,7 @@ A VS Code extension that scans project files and generates a structured director
 
 ## ⚙️ Configuration Options
 
-Access settings by searching for "projectStructure" in VS Code settings or use the "Configure Project Structure Generator" command.
+Access settings by searching for `projectStructure`, `Project Structure Generator`, or `项目结构生成器` in VS Code settings, or use the "Configure Project Structure Generator" command.
 
 ### Available Settings
 
@@ -180,6 +180,7 @@ my-project #
 - ✅ Added clipboard export for project and directory structures without writing files
 - ✅ Added configurable output formats: Markdown, Mermaid mindmap, CSV, and HTML
 - ✅ Changed the default project and directory output file name to `PROJECT_STRUCTURE`
+- ✅ Improved VS Code settings search by adding Project Structure Generator keywords to setting titles and descriptions
 - ✅ Added "Convert Selected Structure To..." command for converting selected tree text into HTML, CSV, or Mermaid mindmap files
 - ✅ Added standalone HTML output with search, expand/collapse controls, and summary stats
 - ✅ Conversion output is saved next to the source document as `<root-name>-structure.html`, `.csv`, or `.mmd`
@@ -284,7 +285,7 @@ VS Code 扩展，用于扫描项目文件并生成结构化的目录树文件。
 
 ## ⚙️ 配置选项
 
-在 VS Code 设置中搜索"projectStructure"或使用"配置项目结构生成器"命令访问设置。
+在 VS Code 设置中搜索 `projectStructure`、`Project Structure Generator` 或 `项目结构生成器`，也可以使用"配置项目结构生成器"命令访问设置。
 
 ### 可用设置
 
@@ -386,6 +387,7 @@ my-project #
 - ✅ 新增剪贴板导出，可复制项目结构或目录结构且不写入文件
 - ✅ 新增可配置输出格式：Markdown、Mermaid 思维导图、CSV 和 HTML
 - ✅ 将项目结构和目录结构的默认输出文件名改为 `PROJECT_STRUCTURE`
+- ✅ 增强 VS Code 设置搜索，在设置标题和描述中加入 Project Structure Generator / 项目结构生成器关键词
 - ✅ 新增"将选中结构转换为..."命令，可将选中的树形结构转换为 HTML、CSV 或 Mermaid 思维导图文件
 - ✅ 新增独立 HTML 输出，支持搜索、展开/折叠和统计信息
 - ✅ 转换结果会保存到源文档所在目录，文件名为 `<根节点名称>-structure.html`、`.csv` 或 `.mmd`
